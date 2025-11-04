@@ -17,7 +17,7 @@ repositories {
 
 dependencies {
     //3D binpacking api
-    implementation "com.github.skjolber.3d-bin-container-packing:core:${containerBinPackingVersion
+    implementation "com.github.skjolber.3d-bin-container-packing:core:${containerBinPackingVersion}"
 
     // Spring Boot Web (REST API)
     implementation 'org.springframework.boot:spring-boot-starter-web'
