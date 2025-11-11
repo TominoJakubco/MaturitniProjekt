@@ -1,11 +1,7 @@
 package org.projekt.controllers;
 
-import org.projekt.models.Box;
 import org.projekt.models.Container;
-import org.projekt.repositories.ContainerRepository;
-import org.projekt.services.BoxService;
 import org.projekt.services.ContainerService;
-import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,7 +19,7 @@ public class ContainerController {
     // CREATE
     @PostMapping
     public Container createContainer(@RequestBody Container container) {
-        System.out.println("Received user: " + container.getName());
+        System.out.println("Received container: " + container.getName());
         return containerService.createContainer(container);
     }
 

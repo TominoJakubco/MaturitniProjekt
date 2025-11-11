@@ -20,17 +20,6 @@ public class Container {
     // Prázdný konstruktor nutný pro JPA
     public Container() {}
 
-    // Konstruktor pro pohodlné vytváření objektů
-    public Container(String name, int length, int width, int height,
-                     double volume, double maxWeight) {
-        this.name = name;
-        this.length = length;
-        this.width = width;
-        this.height = height;
-        this.volume = volume;
-        this.maxWeight = maxWeight;
-    }
-
     // Gettery a settery
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

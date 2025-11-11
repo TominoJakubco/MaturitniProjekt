@@ -53,6 +53,12 @@ export default function MainMenu() {
                 >
                     🔐 Přihlášení
                 </Link>
+                <Link
+                    to="/CreateShipment"
+                    style={linkStyle("#E91E63")}
+                >
+                    Create Shipment
+                </Link>
             </div>
         </div>
     );

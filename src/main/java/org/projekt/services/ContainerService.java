@@ -42,7 +42,7 @@ public class ContainerService {
             container.setVolume(updatedContainer.getVolume());
             container.setMaxWeight(updatedContainer.getMaxWeight());
             return containerRepository.save(container);
-        }).orElseThrow(() -> new RuntimeException("User not found"));
+        }).orElseThrow(() -> new RuntimeException("Container not found"));
     }
 
     // DELETE

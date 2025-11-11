@@ -1,5 +1,6 @@
 package org.projekt.services;
 
+import org.projekt.dto.UserUpdateDTO;
 import org.projekt.models.User;
 import org.projekt.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,25 +40,22 @@ public class UserService {
     }
 
     // UPDATE
-    public User updateUser(Long id, User updatedUser) {
+    public User updateUser(Long id, UserUpdateDTO dto) {
         return userRepository.findById(id).map(user -> {
-            user.setEmail(updatedUser.getEmail());
-            user.setName(updatedUser.getName());
-            user.setSurname(updatedUser.getSurname());
+            user.setEmail(dto.getEmail());
+            user.setName(dto.getName());
+            user.setSurname(dto.getSurname());
 
-            if (updatedUser.getPassword() != null && !updatedUser.getPassword().isEmpty()) {
-                // jen pokud je plaintext, zahoď kontrolu, případně poznáš podle délky hash
-                if (!updatedUser.getPassword().startsWith("$2a$")) { // bcrypt hash začíná $2a$
-                    user.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
-                } else {
-                    user.setPassword(updatedUser.getPassword()); // už je hash
-                }
+            // Hashujeme heslo jen pokud bylo vyplněno
+            if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+                user.setPassword(passwordEncoder.encode(dto.getPassword()));
             }
 
-            user.setRole(updatedUser.getRole());
+            user.setRole(dto.getRole());
             return userRepository.save(user);
         }).orElseThrow(() -> new RuntimeException("User not found"));
     }
+
 
     // DELETE
     public void deleteUser(Long id) {

@@ -1,7 +1,9 @@
 package org.projekt.controllers;
 
+import org.projekt.dto.UserUpdateDTO;
 import org.projekt.models.User;
 import org.projekt.services.UserService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,11 +38,15 @@ public class UserController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    // UPDATE
+    // UserController.java
     @PutMapping("/{id}")
-    public User updateUser(@PathVariable Long id, @RequestBody User updatedUser) {
-        return userService.updateUser(id, updatedUser);
+    public ResponseEntity<User> updateUser(
+            @PathVariable Long id,
+            @RequestBody UserUpdateDTO dto) {
+        User updated = userService.updateUser(id, dto);
+        return ResponseEntity.ok(updated);
     }
+
 
     // DELETE
     @DeleteMapping("/{id}")

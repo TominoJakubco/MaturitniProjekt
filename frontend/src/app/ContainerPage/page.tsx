@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import axiosInstance from "../axiosInstance";
 
 interface Container {
     id?: number;
@@ -25,16 +26,26 @@ export default function ContainerPage() {
     });
     const [editContainer, setEditContainer] = useState<Container | null>(null);
 
+    const handleApiError = (error: any) => {
+        if (error.response?.status === 401) {
+            alert('Nejste přihlášeni');
+            // přesměrování na login může být tady
+        } else if (error.response?.status === 403) {
+            alert('Nemáte dostatečná oprávnění');
+        } else {
+            alert('Došlo k chybě: ' + error.message);
+        }
+    };
+
     const fetchContainers = async () => {
         setLoading(true);
         try {
-            const res = await fetch("/api/containers");
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-            const data = await res.json();
-            setContainers(data);
+            const res = await axiosInstance.get<Container[]>("/api/containers");
+            setContainers(res.data);
         } catch (err) {
             console.error("Chyba při načítání kontejnerů:", err);
             setError("Nepodařilo se načíst kontejnery.");
+            handleApiError(err);
         } finally {
             setLoading(false);
         }
@@ -50,49 +61,41 @@ export default function ContainerPage() {
             return;
         }
         try {
-            const res = await fetch("/api/containers", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newContainer),
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await axiosInstance.post("/api/containers", newContainer);
             setNewContainer({ name: "", length: 0, width: 0, height: 0, volume: 0, maxWeight: 0 });
             await fetchContainers();
             alert("Kontejner přidán!");
         } catch (err) {
             console.error(err);
             alert("Chyba při přidávání kontejneru");
+            handleApiError(err);
         }
     };
 
     const handleDeleteContainer = async (id: number) => {
         if (!window.confirm("Opravdu chceš smazat tento kontejner?")) return;
         try {
-            const res = await fetch(`/api/containers/${id}`, { method: "DELETE" });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await axiosInstance.delete(`/api/containers/${id}`);
             await fetchContainers();
             alert("Kontejner smazán!");
         } catch (err) {
             console.error(err);
             alert("Chyba při mazání kontejneru");
+            handleApiError(err);
         }
     };
 
     const handleUpdateContainer = async () => {
         if (!editContainer?.id) return;
         try {
-            const res = await fetch(`/api/containers/${editContainer.id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(editContainer),
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await axiosInstance.put(`/api/containers/${editContainer.id}`, editContainer);
             setEditContainer(null);
             await fetchContainers();
             alert("Kontejner aktualizován!");
         } catch (err) {
             console.error(err);
             alert("Chyba při aktualizaci kontejneru");
+            handleApiError(err);
         }
     };
 
@@ -166,6 +169,16 @@ export default function ContainerPage() {
                     </tr>
                     </thead>
                     <tbody>
+                    {containers.length === 0 && (
+                        <tr>
+                            <td
+                                style={{ border: "1px solid #ddd", padding: "8px", textAlign: "center" }}
+                                colSpan={8}
+                            >
+                                Žádné kontejnery
+                            </td>
+                        </tr>
+                    )}
                     {containers.map((container) => (
                         <tr key={container.id}>
                             <td style={{ border: "1px solid #ddd", padding: "8px" }}>{container.id}</td>
