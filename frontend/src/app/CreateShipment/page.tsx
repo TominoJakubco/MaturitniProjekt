@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
 
@@ -22,41 +22,31 @@ interface Container {
     maxWeight: number;
 }
 
-interface SelectedContainer {
-    container: Container;
-    count: number;
-}
-
 export default function CreateShipment() {
+    const [shipmentName, setShipmentName] = useState("");
     const [boxes, setBoxes] = useState<Box[]>([]);
     const [containers, setContainers] = useState<Container[]>([]);
     const [selectedBoxes, setSelectedBoxes] = useState<number[]>([]);
-    const [selectedContainers, setSelectedContainers] = useState<SelectedContainer[]>([]);
-    const [newContainer, setNewContainer] = useState<Container>({
-        name: "",
-        length: 0,
-        width: 0,
-        height: 0,
-        volume: 0,
-        maxWeight: 0,
-    });
-    const [showAddContainer, setShowAddContainer] = useState(false);
-    const [tempSelectedContainer, setTempSelectedContainer] = useState<SelectedContainer | null>(null);
+    const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
+
+    const [createdShipmentId, setCreatedShipmentId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
-    const handleApiError = (error: any) => {
+    const handleApiError = useCallback((error: any) => {
         if (error.response?.status === 401) {
             alert("Nejste přihlášeni");
         } else if (error.response?.status === 403) {
             alert("Nemáte dostatečná oprávnění");
         } else {
-            alert("Došlo k chybě: " + error.message);
+            const message = error.response?.data?.message || error.message || "Neznámá chyba";
+            alert("Došlo k chybě: " + message);
         }
-    };
+    }, []);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
+        setError("");
         try {
             const [boxRes, containerRes] = await Promise.all([
                 axiosInstance.get<Box[]>("/api/boxes"),
@@ -64,67 +54,18 @@ export default function CreateShipment() {
             ]);
             setBoxes(boxRes.data);
             setContainers(containerRes.data);
-        } catch (err) {
-            console.error(err);
+        } catch (err: any) {
+            console.error("Fetch error:", err);
             setError("Nepodařilo se načíst boxy nebo kontejnery.");
             handleApiError(err);
         } finally {
             setLoading(false);
         }
-    };
+    }, [handleApiError]);
 
     useEffect(() => {
         fetchData();
-    }, []);
-
-    const handleAddSelectedContainer = (container: Container, count: number) => {
-        if (count <= 0) return alert("Počet musí být větší než 0");
-        setSelectedContainers((prev) => [...prev, { container, count }]);
-    };
-
-    const handleAddNewContainer = async () => {
-        if (!newContainer.name) return alert("Vyplňte název kontejneru.");
-        try {
-            const res = await axiosInstance.post("/api/containers", newContainer);
-            setContainers([...containers, res.data]);
-            setNewContainer({
-                name: "",
-                length: 0,
-                width: 0,
-                height: 0,
-                volume: 0,
-                maxWeight: 0,
-            });
-            setShowAddContainer(false);
-            alert("Kontejner přidán a uložen!");
-        } catch (err) {
-            console.error(err);
-            alert("Chyba při ukládání kontejneru.");
-            handleApiError(err);
-        }
-    };
-
-    const handleCreateShipment = async () => {
-        if (selectedBoxes.length === 0 || selectedContainers.length === 0)
-            return alert("Vyber alespoň 1 box a 1 kontejner.");
-
-        const boxList = boxes.filter((b) => selectedBoxes.includes(b.id));
-        const containerList: Container[] = selectedContainers.flatMap((sc) =>
-            Array(sc.count).fill(sc.container)
-        );
-
-        try {
-            await axiosInstance.post("/api/pack", {
-                boxes: boxList,
-                containers: containerList,
-            });
-            alert("Shipment úspěšně vytvořen!");
-        } catch (err) {
-            console.error(err);
-            alert("Chyba při vytváření shipmentu.");
-            handleApiError(err);
-        }
-    };
+    }, [fetchData]);
 
     const toggleBoxSelection = (id: number) => {
         setSelectedBoxes((prev) =>
@@ -132,190 +73,231 @@ export default function CreateShipment() {
         );
     };
 
+    const handleCreateShipment = async () => {
+        if (!shipmentName.trim()) {
+            alert("Zadejte název shipmentu.");
+            return;
+        }
+        if (selectedBoxes.length === 0) {
+            alert("Vyber alespoň 1 box.");
+            return;
+        }
+        if (!selectedContainer || !selectedContainer.id) {
+            alert("Vyber kontejner.");
+            return;
+        }
+
+        try {
+            const res = await axiosInstance.post("/api/shipments", {
+                shipmentName,
+                boxes: selectedBoxes,
+                containerTypeId: selectedContainer.id,
+            });
+
+            let shipmentId: number | null = null;
+            if (res.data?.id) shipmentId = res.data.id;
+            else if (res.data?.shipmentId) shipmentId = res.data.shipmentId;
+            else if (res.data?.shipment?.id) shipmentId = res.data.shipment.id;
+            else if (typeof res.data === "number") shipmentId = res.data;
+            else if (res.data?.data?.id) shipmentId = res.data.data.id;
+
+            if (shipmentId) {
+                setCreatedShipmentId(shipmentId);
+            } else {
+                console.error("Could not find ID in response:", res.data);
+                alert("Shipment pravděpodobně vytvořen, ale nemůžu najít ID. Zkontroluj konzoli.");
+            }
+        } catch (err: any) {
+            console.error("Create shipment error:", err);
+            handleApiError(err);
+        }
+    };
+
+    const handleResetForm = () => {
+        setCreatedShipmentId(null);
+        setShipmentName("");
+        setSelectedBoxes([]);
+        setSelectedContainer(null);
+    };
+
     return (
-        <div style={{ maxWidth: 1000, margin: "50px auto", fontFamily: "Arial, sans-serif" }}>
-            <Link to="/" style={{ display: "inline-block", marginBottom: "20px", color: "#FF9800" }}>
+        <div style={{ maxWidth: 1200, margin: "50px auto", fontFamily: "Arial, sans-serif", padding: "0 20px" }}>
+            <Link to="/" style={{ display: "inline-block", marginBottom: "20px", color: "#FF9800", textDecoration: "none" }}>
                 ⬅️ Zpět na menu
             </Link>
 
             <h1 style={{ textAlign: "center" }}>Vytvořit shipment</h1>
 
-            {loading && <p>Načítám data...</p>}
-            {error && <p style={{ color: "red" }}>{error}</p>}
+            {loading && <p style={{ textAlign: "center" }}>Načítám data...</p>}
+            {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
 
-            {/* SEZNAM BOXŮ */}
-            <h2>Vyber boxy</h2>
-            <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 20, textAlign: "center" }}>
-                <thead>
-                <tr style={{ background: "#f2f2f2" }}>
-                    <th></th>
-                    <th>Název</th>
-                    <th>Rozměry (L×W×H)</th>
-                    <th>Váha</th>
-                    <th>Počet krabic</th>
-                </tr>
-                </thead>
-                <tbody>
-                {boxes.map((box) => (
-                    <tr key={box.id}>
-                        <td>
-                            <input
-                                type="checkbox"
-                                checked={selectedBoxes.includes(box.id)}
-                                onChange={() => toggleBoxSelection(box.id)}
-                            />
-                        </td>
-                        <td>{box.name}</td>
-                        <td>{box.length} × {box.width} × {box.height}</td>
-                        <td>{box.weight}</td>
-                        <td>{box.amount}</td>
-                    </tr>
-                ))}
-                </tbody>
-            </table>
-
-            {/* PŘIDÁNÍ KONTEJNERŮ */}
-            <h2>Vyber kontejnery</h2>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: 10 }}>
-                <select
-                    style={{ padding: 5 }}
-                    onChange={(e) => {
-                        const selected = containers.find(c => c.id === Number(e.target.value));
-                        if (selected) setTempSelectedContainer({ container: selected, count: 1 });
-                    }}
-                    value={tempSelectedContainer?.container.id || ""}
-                >
-                    <option value="">-- Vyber kontejner --</option>
-                    {containers.map((container) => (
-                        <option key={container.id} value={container.id}>
-                            {container.name} ({container.length}×{container.width}×{container.height})
-                        </option>
-                    ))}
-                </select>
-
-                {tempSelectedContainer && (
-                    <input
-                        type="number"
-                        min={1}
-                        value={tempSelectedContainer.count}
-                        onChange={(e) =>
-                            setTempSelectedContainer({
-                                ...tempSelectedContainer,
-                                count: Number(e.target.value),
-                            })
-                        }
-                        style={{ width: 60 }}
-                    />
-                )}
-
-                <button
-                    type="button"
-                    onClick={() => {
-                        if (!tempSelectedContainer) return;
-                        handleAddSelectedContainer(tempSelectedContainer.container, tempSelectedContainer.count);
-                        setTempSelectedContainer(null);
-                    }}
-                >
-                    ➕ Přidat kontejner
-                </button>
-
-                <button type="button" onClick={() => setShowAddContainer(!showAddContainer)}>
-                    ➕ Vlastní kontejner
-                </button>
-            </div>
-
-            {showAddContainer && (
-                <div style={{ marginTop: 20, border: "1px solid #ccc", padding: 15 }}>
-                    <h3>Nový kontejner</h3>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
+            {createdShipmentId ? (
+                <div style={{ textAlign: "center", marginTop: 30 }}>
+                    <h2>Shipment úspěšně vytvořen! ID: {createdShipmentId}</h2>
+                    <div style={{ marginTop: 20 }}>
+                        <Link
+                            to={`/shipments/${createdShipmentId}`}
+                            style={{
+                                display: "inline-block",
+                                background: "#4CAF50",
+                                color: "white",
+                                padding: "12px 30px",
+                                borderRadius: "6px",
+                                textDecoration: "none",
+                                fontWeight: "bold",
+                                marginRight: 10
+                            }}
+                        >
+                            Zobrazit shipment
+                        </Link>
+                        <button
+                            onClick={handleResetForm}
+                            style={{
+                                background: "#2196F3",
+                                color: "white",
+                                padding: "12px 30px",
+                                border: "none",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontWeight: "bold"
+                            }}
+                        >
+                            Vytvořit další
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    {/* FORM */}
+                    <div style={{ marginBottom: 30 }}>
+                        <label style={{ display: "block", marginBottom: 10, fontSize: "16px", fontWeight: "bold" }}>
+                            Název shipmentu:
+                        </label>
                         <input
-                            placeholder="Název"
-                            value={newContainer.name}
-                            onChange={(e) => setNewContainer({ ...newContainer, name: e.target.value })}
-                        />
-                        <input
-                            placeholder="Délka"
-                            type="number"
-                            value={newContainer.length || ""}
-                            onChange={(e) => setNewContainer({ ...newContainer, length: Number(e.target.value) })}
-                        />
-                        <input
-                            placeholder="Šířka"
-                            type="number"
-                            value={newContainer.width || ""}
-                            onChange={(e) => setNewContainer({ ...newContainer, width: Number(e.target.value) })}
-                        />
-                        <input
-                            placeholder="Výška"
-                            type="number"
-                            value={newContainer.height || ""}
-                            onChange={(e) => setNewContainer({ ...newContainer, height: Number(e.target.value) })}
-                        />
-                        <input
-                            placeholder="Objem"
-                            type="number"
-                            value={newContainer.volume || ""}
-                            onChange={(e) => setNewContainer({ ...newContainer, volume: Number(e.target.value) })}
-                        />
-                        <input
-                            placeholder="Max. váha"
-                            type="number"
-                            value={newContainer.maxWeight || ""}
-                            onChange={(e) => setNewContainer({ ...newContainer, maxWeight: Number(e.target.value) })}
+                            type="text"
+                            value={shipmentName}
+                            onChange={(e) => setShipmentName(e.target.value)}
+                            placeholder="Např. Zásilka do Prahy"
+                            style={{
+                                padding: "10px",
+                                width: "100%",
+                                maxWidth: "400px",
+                                border: "1px solid #ddd",
+                                borderRadius: "4px",
+                                fontSize: "14px"
+                            }}
                         />
                     </div>
-                    <button
-                        type="button"
-                        style={{ marginTop: 10 }}
-                        onClick={handleAddNewContainer}
-                    >
-                        💾 Uložit nový kontejner
-                    </button>
-                </div>
-            )}
 
-            {selectedContainers.length > 0 && (
-                <div style={{ marginTop: 20 }}>
-                    <h3>Vybrané kontejnery</h3>
-                    <ul>
-                        {selectedContainers.map((sc, i) => (
-                            <li key={i} style={{ marginBottom: 5 }}>
-                                {sc.container.name} × {sc.count}{" "}
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedContainers(prev => prev.filter((_, idx) => idx !== i))}
-                                    style={{
-                                        marginLeft: 10,
-                                        background: "white",
-                                        color: "white",
-                                        border: "1px solid black",
-                                        borderRadius: "4px",
-                                        cursor: "pointer",
-                                        padding: "2px 6px",
-                                    }}
-                                >
-                                    ❌
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
+                    {/* BOX SELECTION */}
+                    <h2>Vyber boxy</h2>
+                    {boxes.length === 0 && !loading ? (
+                        <p style={{ color: "#666" }}>Žádné boxy k dispozici.</p>
+                    ) : (
+                        <div style={{ overflowX: "auto", marginBottom: 30 }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #ddd" }}>
+                                <thead>
+                                <tr style={{ background: "#f5f5f5" }}>
+                                    <th style={{ padding: 12, borderBottom: "2px solid #ddd" }}>Vybrat</th>
+                                    <th style={{ padding: 12, borderBottom: "2px solid #ddd" }}>Název</th>
+                                    <th style={{ padding: 12, borderBottom: "2px solid #ddd" }}>Rozměry (L×W×H)</th>
+                                    <th style={{ padding: 12, borderBottom: "2px solid #ddd" }}>Váha (kg)</th>
+                                    <th style={{ padding: 12, borderBottom: "2px solid #ddd" }}>Počet ks</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {boxes.map((box) => (
+                                    <tr
+                                        key={box.id}
+                                        style={{
+                                            background: selectedBoxes.includes(box.id) ? "#e3f2fd" : "white",
+                                            cursor: "pointer"
+                                        }}
+                                        onClick={() => toggleBoxSelection(box.id)}
+                                    >
+                                        <td style={{ padding: 12, textAlign: "center", borderBottom: "1px solid #eee" }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedBoxes.includes(box.id)}
+                                                onChange={() => toggleBoxSelection(box.id)}
+                                                onClick={(e) => e.stopPropagation()}
+                                                style={{ cursor: "pointer" }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>{box.name}</td>
+                                        <td style={{ padding: 12, textAlign: "center", borderBottom: "1px solid #eee" }}>
+                                            {box.length}×{box.width}×{box.height}
+                                        </td>
+                                        <td style={{ padding: 12, textAlign: "center", borderBottom: "1px solid #eee" }}>{box.weight}</td>
+                                        <td style={{ padding: 12, textAlign: "center", borderBottom: "1px solid #eee" }}>{box.amount}</td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
-            <button
-                type="button"
-                onClick={handleCreateShipment}
-                style={{
-                    background: "#4CAF50",
-                    color: "white",
-                    padding: "10px 20px",
-                    border: "none",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                }}
-            >
-                Vytvořit shipment
-            </button>
+                    {/* CONTAINER SELECTION */}
+                    <h2>Vyber kontejner</h2>
+                    {containers.length === 0 && !loading ? (
+                        <p style={{ color: "#666" }}>Žádné kontejnery k dispozici.</p>
+                    ) : (
+                        <select
+                            style={{
+                                padding: "10px",
+                                marginBottom: 30,
+                                width: "100%",
+                                maxWidth: "400px",
+                                border: "1px solid #ddd",
+                                borderRadius: "4px",
+                                fontSize: "14px",
+                                cursor: "pointer"
+                            }}
+                            value={selectedContainer?.id || ""}
+                            onChange={(e) => {
+                                const sel = containers.find(c => c.id === Number(e.target.value));
+                                setSelectedContainer(sel || null);
+                            }}
+                        >
+                            <option value="">-- Vyber kontejner --</option>
+                            {containers.map(c => (
+                                <option key={c.id} value={c.id}>
+                                    {c.name} ({c.length}×{c.width}×{c.height}) - max {c.maxWeight}kg
+                                </option>
+                            ))}
+                        </select>
+                    )}
+
+                    <div style={{ marginTop: 30 }}>
+                        <button
+                            onClick={handleCreateShipment}
+                            disabled={loading || !shipmentName.trim() || selectedBoxes.length === 0 || !selectedContainer}
+                            style={{
+                                background: (!shipmentName.trim() || selectedBoxes.length === 0 || !selectedContainer)
+                                    ? "#cccccc"
+                                    : "#4CAF50",
+                                color: "white",
+                                padding: "12px 30px",
+                                border: "none",
+                                borderRadius: "6px",
+                                cursor: (!shipmentName.trim() || selectedBoxes.length === 0 || !selectedContainer)
+                                    ? "not-allowed"
+                                    : "pointer",
+                                fontSize: "16px",
+                                fontWeight: "bold"
+                            }}
+                        >
+                            Vytvořit shipment
+                        </button>
+                    </div>
+
+                    {selectedBoxes.length > 0 && (
+                        <div style={{ marginTop: 20, padding: 15, background: "#f9f9f9", borderRadius: 4, border: "1px solid #e0e0e0" }}>
+                            <strong>Vybrané boxy:</strong> {selectedBoxes.length} ks
+                        </div>
+                    )}
+                </>
+            )}
         </div>
     );
 }

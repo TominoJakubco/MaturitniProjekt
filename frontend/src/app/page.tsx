@@ -54,7 +54,7 @@ export default function MainMenu() {
                     🔐 Přihlášení
                 </Link>
                 <Link
-                    to="/CreateShipment"
+                    to="/create-shipment"
                     style={linkStyle("#E91E63")}
                 >
                     Create Shipment

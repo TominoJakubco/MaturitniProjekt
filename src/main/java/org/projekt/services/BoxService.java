@@ -1,7 +1,6 @@
 package org.projekt.services;
 
 import org.projekt.models.Box;
-import org.projekt.models.User;
 import org.projekt.repositories.BoxRepository;
 import org.springframework.stereotype.Service;
 

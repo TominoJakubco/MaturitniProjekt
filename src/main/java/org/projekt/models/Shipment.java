@@ -1,6 +1,8 @@
 package org.projekt.models;
 
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Entity
@@ -8,51 +10,39 @@ public class Shipment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // primární klíč
+    private Long id;
 
-    private String name;
-    @Column(name = "weight_total")
-    private double weightTotal;
-    @Column(name = "unused_space")
-    private double unusedSpace;
+    private String name; // user-defined shipment name
+    private String description;
+    private Date createdAt = new Date();
 
-    // Vazba na Container (mnoho zásilek může být v jednom kontejneru)
-    @ManyToOne
-    @JoinColumn(name = "container_id")
-    private Container container;
+    @OneToMany(mappedBy = "shipment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ContainerInstance> containers = new ArrayList<>();
 
-    // Volitelně — pokud chceš uložit boxy v rámci shipmentu
-    @OneToMany(cascade = CascadeType.ALL)
-    private List<Box> boxes;
-
-    // Prázdný konstruktor nutný pro JPA
     public Shipment() {}
 
-    // Konstruktor pro pohodlné vytváření objektů
-    public Shipment(String name, Container container, double weightTotal, double unusedSpace, List<Box> boxes) {
+    public Shipment(String name, String description) {
         this.name = name;
-        this.container = container;
-        this.weightTotal = weightTotal;
-        this.unusedSpace = unusedSpace;
-        this.boxes = boxes;
+        this.description = description;
     }
 
-    // Gettery a settery
+    // Getters and setters
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
-    public double getWeightTotal() { return weightTotal; }
-    public void setWeightTotal(double weightTotal) { this.weightTotal = weightTotal; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public double getUnusedSpace() { return unusedSpace; }
-    public void setUnusedSpace(double unusedSpace) { this.unusedSpace = unusedSpace; }
+    public List<ContainerInstance> getContainers() { return containers; }
+    public void setContainers(List<ContainerInstance> containers) { this.containers = containers; }
 
-    public Container getContainer() { return container; }
-    public void setContainer(Container container) { this.container = container; }
+    public Date getCreatedAt() {
+        return createdAt;
+    }
 
-    public List<Box> getBoxes() { return boxes; }
-    public void setBoxes(List<Box> boxes) { this.boxes = boxes; }
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
+    }
 }

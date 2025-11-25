@@ -1,7 +1,6 @@
 package org.projekt.services;
 
 import org.projekt.models.Container;
-import org.projekt.models.User;
 import org.projekt.repositories.ContainerRepository;
 import org.springframework.stereotype.Service;
 

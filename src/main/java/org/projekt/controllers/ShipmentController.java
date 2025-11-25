@@ -1,50 +1,88 @@
 package org.projekt.controllers;
 
-
-import org.projekt.models.Shipment;
-import org.projekt.services.ShipmentService;
+import org.projekt.dto.ShipmentRequest;
+import org.projekt.dto.ShipmentVisualizationDTO;
+import org.projekt.models.*;
+import org.projekt.services.BoxPackingService;
+import org.projekt.repositories.ShipmentRepository;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/shipments")
 public class ShipmentController {
-    private final ShipmentService shipmentService;
 
-    public ShipmentController(ShipmentService shipmentService) {
-        this.shipmentService = shipmentService;
+    private final BoxPackingService boxPackingService;
+    private final ShipmentRepository shipmentRepository;
+
+    public ShipmentController(BoxPackingService boxPackingService, ShipmentRepository shipmentRepository) {
+        this.boxPackingService = boxPackingService;
+        this.shipmentRepository = shipmentRepository;
     }
 
-    // CREATE
     @PostMapping
-    public Shipment createShipment(@RequestBody Shipment shipment) {
-        System.out.println("Received shipment: " + shipment.getName());
-        return shipmentService.createShipment(shipment);
+    public Shipment createShipment(
+            @RequestBody ShipmentRequest request
+    ) {
+        // Run packing logic
+        Shipment shipment = boxPackingService.packShipment(
+                request.getShipmentName(),
+                request.getBoxes(),
+                request.getContainerTypeId()
+
+        );
+
+        // Save result
+        return shipmentRepository.save(shipment);
     }
 
-    // READ - všechny
     @GetMapping
     public List<Shipment> getAllShipments() {
-        return shipmentService.getAllShipments();
+        return shipmentRepository.findAll();
     }
 
-    // READ - jeden podle ID
     @GetMapping("/{id}")
     public Shipment getShipmentById(@PathVariable Long id) {
-        return shipmentService.getShipmentById(id)
-                .orElseThrow(() -> new RuntimeException("shipment not found"));
+        return shipmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Shipment not found"));
     }
 
-    // UPDATE
-    @PutMapping("/{id}")
-    public Shipment updateShipment(@PathVariable Long id, @RequestBody Shipment updatedShipment) {
-        return shipmentService.updateShipment(id, updatedShipment);
-    }
 
-    // DELETE
-    @DeleteMapping("/{id}")
-    public void deleteShipment(@PathVariable Long id) {
-        shipmentService.deleteShipment(id);
+    @GetMapping("/{id}/visualization")
+    public ShipmentVisualizationDTO getVisualization(@PathVariable Long id) {
+        Shipment shipment = shipmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Shipment not found"));
+
+        ShipmentVisualizationDTO dto = new ShipmentVisualizationDTO();
+
+        // Make sure your entities don't have circular references being serialized
+        List<ShipmentVisualizationDTO.ContainerDTO> containerDTOS = shipment.getContainers().stream().map(ci -> {
+            ShipmentVisualizationDTO.ContainerDTO c = new ShipmentVisualizationDTO.ContainerDTO();
+            c.setName(ci.getContainerType().getName());
+            c.setLength(ci.getContainerType().getLength());
+            c.setWidth(ci.getContainerType().getWidth());
+            c.setHeight(ci.getContainerType().getHeight());
+
+            // IMPORTANT: Make sure getPlacements() doesn't trigger circular references
+            List<ShipmentVisualizationDTO.PlacementDTO> placements = ci.getPlacements().stream().map(p -> {
+                ShipmentVisualizationDTO.PlacementDTO pd = new ShipmentVisualizationDTO.PlacementDTO();
+                pd.setPlacementId(p.getId());
+                pd.setBoxId(p.getBox() != null ? p.getBox().getId() : null);
+                pd.setBoxName(p.getBox() != null ? p.getBox().getName() : "box");
+                pd.setX(p.getMinX());
+                pd.setY(p.getMinY());
+                pd.setZ(p.getMinZ());
+                pd.setDx(p.getMaxX() - p.getMinX());
+                pd.setDy(p.getMaxY() - p.getMinY());
+                pd.setDz(p.getMaxZ() - p.getMinZ());
+                return pd;
+            }).toList();
+
+            c.setPlacements(placements);
+            return c;
+        }).toList();
+
+        dto.setContainers(containerDTOS);
+        return dto;
     }
 }
