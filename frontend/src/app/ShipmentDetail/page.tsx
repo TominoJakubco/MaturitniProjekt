@@ -29,7 +29,16 @@ export default function ShipmentDetail() {
             .finally(() => setLoading(false));
     }, [id]);
 
-    if (!id) return <p>ID shipmentu nebylo poskytnuto.</p>;
+    if (!id) {
+        return (
+            <div style={{ maxWidth: 1200, margin: "50px auto", fontFamily: "Arial, sans-serif", padding: "0 20px" }}>
+                <Link to="/" style={{ display: "inline-block", marginBottom: "20px", color: "#FF9800", textDecoration: "none" }}>
+                    ⬅️ Zpět na menu
+                </Link>
+                <p style={{ textAlign: "center", color: "red" }}>ID shipmentu nebylo poskytnuto.</p>
+            </div>
+        );
+    }
 
     return (
         <div style={{ maxWidth: 1200, margin: "50px auto", fontFamily: "Arial, sans-serif", padding: "0 20px" }}>

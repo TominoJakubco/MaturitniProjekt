@@ -18,6 +18,7 @@ public class ContainerService {
     // CREATE
     public Container createContainer(Container container) {
         System.out.println("Received container: " + container.getName());
+        container.setVolume(container.getLength() * container.getWidth() * container.getHeight());
         return containerRepository.save(container);
     }
 

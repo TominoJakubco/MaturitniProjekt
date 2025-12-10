@@ -1,81 +1,80 @@
 import { Link } from "react-router-dom";
 
 export default function MainMenu() {
+    const buttonColor = "#B8C6DE";
+
     return (
         <div
             style={{
-                maxWidth: 800,
-                margin: "100px auto",
-                textAlign: "center",
-                fontFamily: "Arial, sans-serif",
+                minHeight: "100vh",
+                backgroundColor: "#f7f9fc",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                padding: "20px"
             }}
         >
-            <h1 style={{ fontSize: "2.5rem", marginBottom: "50px" }}>Hlavní menu</h1>
-
             <div
                 style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(2, 1fr)",
-                    gap: "20px",
-                    maxWidth: "600px",
-                    margin: "0 auto",
+                    width: "100%",
+                    maxWidth: "480px",
+                    backgroundColor: "#fff",
+                    borderRadius: "12px",
+                    boxShadow: "0 12px 32px rgba(0, 0, 0, 0.08)",
+                    padding: "40px 24px",
+                    textAlign: "center",
+                    fontFamily: "Arial, sans-serif"
                 }}
             >
-                <Link
-                    to="/users"
-                    style={linkStyle("#4CAF50")}
-                >
-                    👤 Uživatelé
-                </Link>
-                <Link
-                    to="/boxes"
-                    style={linkStyle("#2196F3")}
-                >
-                    📦 Boxy
-                </Link>
-                <Link
-                    to="/containers"
-                    style={linkStyle("#FF9800")}
-                >
-                    🚢 Kontejnery
-                </Link>
-                <Link
-                    to="/shipments"
-                    style={linkStyle("#9C27B0")}
-                >
-                    📋 Zásilky
-                </Link>
+                <h1 style={{ fontSize: "2rem", marginBottom: "32px", color: "#222" }}>
+                    Hlavní menu
+                </h1>
 
-                {/* 🧩 NEW: Login Button */}
-                <Link
-                    to="/login"
-                    style={linkStyle("#607D8B")}
-                >
-                    🔐 Přihlášení
-                </Link>
-                <Link
-                    to="/create-shipment"
-                    style={linkStyle("#E91E63")}
-                >
-                    Create Shipment
-                </Link>
+                <nav style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "18px"
+                }}>
+                    <MenuButton to="/users" color={buttonColor} label="Uživatelé" />
+                    <MenuButton to="/boxes" color={buttonColor} label="Boxy" />
+                    <MenuButton to="/containers" color={buttonColor} label="Kontejnery" />
+                    <MenuButton to="/shipments" color={buttonColor} label="Shipmenty" />
+                    <MenuButton to="/login" color={buttonColor} label="Login" />
+                    <MenuButton to="/create-shipment" color={buttonColor} label="Nový Shipment" />
+                </nav>
             </div>
         </div>
     );
 }
 
-// 🎨 Reusable inline style function
-function linkStyle(color: string): React.CSSProperties {
-    return {
-        padding: "40px",
-        fontSize: "1.2rem",
-        cursor: "pointer",
-        backgroundColor: color,
-        color: "white",
-        border: "none",
-        borderRadius: "8px",
-        textDecoration: "none",
-        display: "block",
-        transition: "background-color 0.3s",
-    };
+function MenuButton({ to, label, color }: { to: string; label: string; color: string }) {
+    return (
+        <Link
+            to={to}
+            style={{
+                padding: "16px 0",
+                backgroundColor: color,
+                color: "#222",
+                textDecoration: "none",
+                fontSize: "1.1rem",
+                fontWeight: 500,
+                borderRadius: "4px",
+                display: "block",
+                transition: "background-color 0.2s, transform 0.1s",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+            }}
+            onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.backgroundColor = "#4F82E0";
+                (e.currentTarget as HTMLElement).style.color = "#fff";
+                (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+            }}
+            onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.backgroundColor = color;
+                (e.currentTarget as HTMLElement).style.color = "#222";
+                (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+            }}
+        >
+            {label}
+        </Link>
+    );
 }

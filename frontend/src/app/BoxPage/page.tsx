@@ -9,10 +9,7 @@ interface Box {
     length: number;
     width: number;
     height: number;
-    volume: number;
-    volumeTotal: number;
     weight: number;
-    weightTotal: number;
 }
 
 export default function BoxPage() {
@@ -25,10 +22,7 @@ export default function BoxPage() {
         length: 0,
         width: 0,
         height: 0,
-        volume: 0,
-        volumeTotal: 0,
         weight: 0,
-        weightTotal: 0,
     });
     const [editBox, setEditBox] = useState<Box | null>(null);
 
@@ -74,16 +68,11 @@ export default function BoxPage() {
                 length: 0,
                 width: 0,
                 height: 0,
-                volume: 0,
-                volumeTotal: 0,
                 weight: 0,
-                weightTotal: 0,
             });
             await fetchBoxes();
-            alert("Box přidán!");
         } catch (err) {
             console.error(err);
-            alert("Chyba při přidávání boxu");
             handleApiError(err);
         }
     };
@@ -93,7 +82,6 @@ export default function BoxPage() {
         try {
             await axiosInstance.delete(`/api/boxes/${id}`);
             await fetchBoxes();
-            alert("Box smazán!");
         } catch (err) {
             console.error(err);
             alert("Chyba při mazání boxu");
@@ -107,11 +95,46 @@ export default function BoxPage() {
             await axiosInstance.put(`/api/boxes/${editBox.id}`, editBox);
             setEditBox(null);
             await fetchBoxes();
-            alert("Box aktualizován!");
         } catch (err) {
             console.error(err);
             alert("Chyba při aktualizaci boxu");
             handleApiError(err);
+        }
+    };
+
+    // ----------------------
+    // Excel upload section
+    // ----------------------
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) setSelectedFile(file);
+    };
+
+    const handleRemoveFile = () => {
+        setSelectedFile(null);
+    };
+
+    const handleUploadFile = async () => {
+        if (!selectedFile) return;
+
+        setUploading(true);
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        try {
+            await axiosInstance.post("/api/boxes/upload", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            setSelectedFile(null);
+            await fetchBoxes();
+        } catch (err) {
+            console.error(err);
+            alert("Chyba při importu Excelu");
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -126,6 +149,7 @@ export default function BoxPage() {
             {loading && <p>Načítám boxy...</p>}
             {error && <p style={{ color: "red" }}>{error}</p>}
 
+            {/* Add box manually */}
             <h2>Přidat box</h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
                 <input placeholder="Název" value={newBox.name} onChange={(e) => setNewBox({ ...newBox, name: e.target.value })} />
@@ -133,17 +157,35 @@ export default function BoxPage() {
                 <input placeholder="Délka" type="number" value={newBox.length || ""} onChange={(e) => setNewBox({ ...newBox, length: Number(e.target.value) })} />
                 <input placeholder="Šířka" type="number" value={newBox.width || ""} onChange={(e) => setNewBox({ ...newBox, width: Number(e.target.value) })} />
                 <input placeholder="Výška" type="number" value={newBox.height || ""} onChange={(e) => setNewBox({ ...newBox, height: Number(e.target.value) })} />
-                <input placeholder="Objem" type="number" value={newBox.volume || ""} onChange={(e) => setNewBox({ ...newBox, volume: Number(e.target.value) })} />
-                <input placeholder="Celkový objem" type="number" value={newBox.volumeTotal || ""} onChange={(e) => setNewBox({ ...newBox, volumeTotal: Number(e.target.value) })} />
                 <input placeholder="Váha" type="number" value={newBox.weight || ""} onChange={(e) => setNewBox({ ...newBox, weight: Number(e.target.value) })} />
-                <input placeholder="Celková váha" type="number" value={newBox.weightTotal || ""} onChange={(e) => setNewBox({ ...newBox, weightTotal: Number(e.target.value) })} />
             </div>
             <button type="button" style={{ marginTop: 10 }} onClick={handleAddBox}>
                 Přidat
             </button>
 
+            {/* Excel upload */}
+            <h2 style={{ marginTop: 30 }}>Nahrát boxy z Excelu</h2>
+
+            {!selectedFile && (
+                <input type="file" accept=".xlsx,.xls" onChange={handleFileChange} />
+            )}
+
+            {selectedFile && (
+                <div style={{ marginTop: 10 }}>
+                    <strong>Vybraný soubor:</strong> {selectedFile.name}
+                    <button style={{ marginLeft: 10 }} onClick={handleRemoveFile}>Odebrat</button>
+                </div>
+            )}
+
+            {selectedFile && (
+                <button style={{ marginTop: 15 }} onClick={handleUploadFile} disabled={uploading}>
+                    {uploading ? "Importuji..." : "Importovat boxy"}
+                </button>
+            )}
+
             <hr style={{ margin: "30px 0" }} />
 
+            {/* Box table */}
             {!loading && !error && (
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
                     <thead>
@@ -154,10 +196,7 @@ export default function BoxPage() {
                         <th style={{ border: "1px solid #ddd", padding: "8px" }}>Délka</th>
                         <th style={{ border: "1px solid #ddd", padding: "8px" }}>Šířka</th>
                         <th style={{ border: "1px solid #ddd", padding: "8px" }}>Výška</th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px" }}>Objem</th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px" }}>Celk. objem</th>
                         <th style={{ border: "1px solid #ddd", padding: "8px" }}>Váha</th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px" }}>Celk. váha</th>
                         <th style={{ border: "1px solid #ddd", padding: "8px" }}>Akce</th>
                     </tr>
                     </thead>
@@ -170,17 +209,10 @@ export default function BoxPage() {
                             <td style={{ border: "1px solid #ddd", padding: "8px" }}>{box.length}</td>
                             <td style={{ border: "1px solid #ddd", padding: "8px" }}>{box.width}</td>
                             <td style={{ border: "1px solid #ddd", padding: "8px" }}>{box.height}</td>
-                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{box.volume}</td>
-                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{box.volumeTotal}</td>
                             <td style={{ border: "1px solid #ddd", padding: "8px" }}>{box.weight}</td>
-                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{box.weightTotal}</td>
                             <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                                <button type="button" onClick={() => setEditBox(box)}>
-                                    ✏️ Upravit
-                                </button>
-                                <button type="button" style={{ marginLeft: 8, color: "red" }} onClick={() => handleDeleteBox(box.id!)}>
-                                    🗑️ Smazat
-                                </button>
+                                <button type="button" onClick={() => setEditBox(box)}>✏️ Upravit</button>
+                                <button type="button" style={{ marginLeft: 8, color: "red" }} onClick={() => handleDeleteBox(box.id!)}>🗑️ Smazat</button>
                             </td>
                         </tr>
                     ))}
@@ -197,10 +229,7 @@ export default function BoxPage() {
                         <input placeholder="Délka" type="number" value={editBox.length} onChange={(e) => setEditBox({ ...editBox, length: Number(e.target.value) })} />
                         <input placeholder="Šířka" type="number" value={editBox.width} onChange={(e) => setEditBox({ ...editBox, width: Number(e.target.value) })} />
                         <input placeholder="Výška" type="number" value={editBox.height} onChange={(e) => setEditBox({ ...editBox, height: Number(e.target.value) })} />
-                        <input placeholder="Objem" type="number" value={editBox.volume} onChange={(e) => setEditBox({ ...editBox, volume: Number(e.target.value) })} />
-                        <input placeholder="Celkový objem" type="number" value={editBox.volumeTotal} onChange={(e) => setEditBox({ ...editBox, volumeTotal: Number(e.target.value) })} />
                         <input placeholder="Váha" type="number" value={editBox.weight} onChange={(e) => setEditBox({ ...editBox, weight: Number(e.target.value) })} />
-                        <input placeholder="Celková váha" type="number" value={editBox.weightTotal} onChange={(e) => setEditBox({ ...editBox, weightTotal: Number(e.target.value) })} />
                     </div>
                     <div style={{ marginTop: 10 }}>
                         <button type="button" onClick={handleUpdateBox}>💾 Uložit změny</button>

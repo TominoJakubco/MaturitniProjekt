@@ -8,7 +8,6 @@ interface Container {
     length: number;
     width: number;
     height: number;
-    volume: number;
     maxWeight: number;
 }
 
@@ -21,7 +20,6 @@ export default function ContainerPage() {
         length: 0,
         width: 0,
         height: 0,
-        volume: 0,
         maxWeight: 0,
     });
     const [editContainer, setEditContainer] = useState<Container | null>(null);
@@ -62,7 +60,7 @@ export default function ContainerPage() {
         }
         try {
             await axiosInstance.post("/api/containers", newContainer);
-            setNewContainer({ name: "", length: 0, width: 0, height: 0, volume: 0, maxWeight: 0 });
+            setNewContainer({ name: "", length: 0, width: 0, height: 0, maxWeight: 0 });
             await fetchContainers();
             alert("Kontejner přidán!");
         } catch (err) {
@@ -136,12 +134,6 @@ export default function ContainerPage() {
                     onChange={(e) => setNewContainer({ ...newContainer, height: Number(e.target.value) })}
                 />
                 <input
-                    placeholder="Objem"
-                    type="number"
-                    value={newContainer.volume || ""}
-                    onChange={(e) => setNewContainer({ ...newContainer, volume: Number(e.target.value) })}
-                />
-                <input
                     placeholder="Max. váha"
                     type="number"
                     value={newContainer.maxWeight || ""}
@@ -163,7 +155,6 @@ export default function ContainerPage() {
                         <th style={{ border: "1px solid #ddd", padding: "8px" }}>Délka</th>
                         <th style={{ border: "1px solid #ddd", padding: "8px" }}>Šířka</th>
                         <th style={{ border: "1px solid #ddd", padding: "8px" }}>Výška</th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px" }}>Objem</th>
                         <th style={{ border: "1px solid #ddd", padding: "8px" }}>Max. váha</th>
                         <th style={{ border: "1px solid #ddd", padding: "8px" }}>Akce</th>
                     </tr>
@@ -186,7 +177,6 @@ export default function ContainerPage() {
                             <td style={{ border: "1px solid #ddd", padding: "8px" }}>{container.length}</td>
                             <td style={{ border: "1px solid #ddd", padding: "8px" }}>{container.width}</td>
                             <td style={{ border: "1px solid #ddd", padding: "8px" }}>{container.height}</td>
-                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{container.volume}</td>
                             <td style={{ border: "1px solid #ddd", padding: "8px" }}>{container.maxWeight}</td>
                             <td style={{ border: "1px solid #ddd", padding: "8px" }}>
                                 <button type="button" onClick={() => setEditContainer(container)}>
@@ -232,12 +222,6 @@ export default function ContainerPage() {
                             type="number"
                             value={editContainer.height}
                             onChange={(e) => setEditContainer({ ...editContainer, height: Number(e.target.value) })}
-                        />
-                        <input
-                            placeholder="Objem"
-                            type="number"
-                            value={editContainer.volume}
-                            onChange={(e) => setEditContainer({ ...editContainer, volume: Number(e.target.value) })}
                         />
                         <input
                             placeholder="Max. váha"

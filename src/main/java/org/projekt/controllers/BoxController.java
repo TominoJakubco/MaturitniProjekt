@@ -4,6 +4,7 @@ import org.projekt.models.Box;
 import org.projekt.models.User;
 import org.projekt.services.BoxService;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,6 +24,13 @@ public class BoxController {
         System.out.println("Received user: " + box.getName());
         return boxService.createUser(box);
     }
+
+    @PostMapping("/upload")
+    public String uploadBoxes(@RequestParam("file") MultipartFile file) {
+        boxService.importBoxesFromExcel(file);
+        return "OK";
+    }
+
 
     // READ - všechny
     @GetMapping

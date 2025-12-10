@@ -55,7 +55,6 @@ public class ShipmentController {
 
         ShipmentVisualizationDTO dto = new ShipmentVisualizationDTO();
 
-        // Make sure your entities don't have circular references being serialized
         List<ShipmentVisualizationDTO.ContainerDTO> containerDTOS = shipment.getContainers().stream().map(ci -> {
             ShipmentVisualizationDTO.ContainerDTO c = new ShipmentVisualizationDTO.ContainerDTO();
             c.setName(ci.getContainerType().getName());
@@ -63,18 +62,41 @@ public class ShipmentController {
             c.setWidth(ci.getContainerType().getWidth());
             c.setHeight(ci.getContainerType().getHeight());
 
-            // IMPORTANT: Make sure getPlacements() doesn't trigger circular references
             List<ShipmentVisualizationDTO.PlacementDTO> placements = ci.getPlacements().stream().map(p -> {
                 ShipmentVisualizationDTO.PlacementDTO pd = new ShipmentVisualizationDTO.PlacementDTO();
                 pd.setPlacementId(p.getId());
                 pd.setBoxId(p.getBox() != null ? p.getBox().getId() : null);
                 pd.setBoxName(p.getBox() != null ? p.getBox().getName() : "box");
+
+                // Position is the minimum corner
                 pd.setX(p.getMinX());
                 pd.setY(p.getMinY());
                 pd.setZ(p.getMinZ());
-                pd.setDx(p.getMaxX() - p.getMinX());
-                pd.setDy(p.getMaxY() - p.getMinY());
-                pd.setDz(p.getMaxZ() - p.getMinZ());
+
+                // CRITICAL FIX: Use the actual box dimensions from the Box entity
+                // The 3D bin packing library may rotate boxes, so we need to determine
+                // which dimension maps to which axis based on the rotation
+                Box box = p.getBox();
+                if (box != null) {
+                    // Get the actual placed dimensions (considering rotation)
+                    double placedDx = p.getMaxX() - p.getMinX();
+                    double placedDy = p.getMaxY() - p.getMinY();
+                    double placedDz = p.getMaxZ() - p.getMinZ();
+
+                    // Use the placed dimensions directly
+                    pd.setDx(placedDx);
+                    pd.setDy(placedDy);
+                    pd.setDz(placedDz);
+
+                    // Optional: Add rotation info if needed for debugging
+                    // pd.setRotation(p.getRotation());
+                } else {
+                    // Fallback if box is null
+                    pd.setDx(p.getMaxX() - p.getMinX());
+                    pd.setDy(p.getMaxY() - p.getMinY());
+                    pd.setDz(p.getMaxZ() - p.getMinZ());
+                }
+
                 return pd;
             }).toList();
 
