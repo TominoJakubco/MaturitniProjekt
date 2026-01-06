@@ -2,7 +2,9 @@ package org.projekt.controllers;
 
 import org.projekt.models.Box;
 import org.projekt.models.User;
+import org.projekt.models.manytomany.UserBox;
 import org.projekt.services.BoxService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,42 +20,57 @@ public class BoxController {
         this.boxService = boxService;
     }
 
-    // CREATE
+    // CREATE - nastaví ownera
     @PostMapping
-    public Box createBox(@RequestBody Box box) {
-        System.out.println("Received user: " + box.getName());
-        return boxService.createUser(box);
+    public Box createBox(@RequestBody Box box, @AuthenticationPrincipal User user) {
+        return boxService.createBox(box, user);
     }
 
+    // IMPORT z Excelu - nastaví ownera
     @PostMapping("/upload")
-    public String uploadBoxes(@RequestParam("file") MultipartFile file) {
-        boxService.importBoxesFromExcel(file);
+    public String uploadBoxes(@RequestParam("file") MultipartFile file, @AuthenticationPrincipal User user) {
+        boxService.importBoxesFromExcel(file, user);
         return "OK";
     }
 
+    // READ - všechny boxy v DB (pouze admin)
+    @GetMapping("/all")
+    public List<Box> getAllBoxesAdmin(@AuthenticationPrincipal User user) {
+        return boxService.getAllBoxes(user);
+    }
 
-    // READ - všechny
+    // READ - všechny boxy, které může uživatel vidět (owner nebo shared)
     @GetMapping
-    public List<Box> getAllBoxes() {
-        return boxService.getAllBoxes();
+    public List<Box> getAllBoxes(@AuthenticationPrincipal User user) {
+        return boxService.getVisibleBoxes(user);
     }
 
-    // READ - jeden podle ID
+    // READ - jeden box podle ID + kontrola přístupu
     @GetMapping("/{id}")
-    public Box getBoxById(@PathVariable Long id) {
-        return boxService.getBoxById(id)
-                .orElseThrow(() -> new RuntimeException("Box not found"));
+    public Box getBoxById(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        return boxService.getBoxByIdWithPermission(id, user)
+                .orElseThrow(() -> new RuntimeException("Box not found or no permission"));
     }
 
-    // UPDATE
+    // UPDATE - jen owner nebo user s canEdit = true
     @PutMapping("/{id}")
-    public Box updateBox(@PathVariable Long id, @RequestBody Box updatedBox) {
-        return boxService.updateBox(id, updatedBox);
+    public Box updateBox(@PathVariable Long id, @RequestBody Box updatedBox, @AuthenticationPrincipal User user) {
+        return boxService.updateBoxWithPermission(id, updatedBox, user);
     }
 
-    // DELETE
+    // DELETE - jen owner nebo user s canEdit = true
     @DeleteMapping("/{id}")
-    public void deleteBox(@PathVariable Long id) {
-        boxService.deleteBox(id);
+    public void deleteBox(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        boxService.deleteBoxWithPermission(id, user);
+    }
+
+    // SHARE - přidání přístupu pro jiného uživatele
+    @PostMapping("/{id}/share")
+    public UserBox shareBox(@PathVariable Long id,
+                            @RequestParam Long targetUserId,
+                            @RequestParam boolean canView,
+                            @RequestParam boolean canEdit,
+                            @AuthenticationPrincipal User user) {
+        return boxService.shareBox(id, targetUserId, canView, canEdit, user);
     }
 }

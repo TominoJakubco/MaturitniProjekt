@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -43,20 +44,34 @@ public class UserService {
             user.setEmail(dto.getEmail());
             user.setName(dto.getName());
             user.setSurname(dto.getSurname());
-
-            // Hashujeme heslo jen pokud bylo vyplněno
-            if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
-                user.setPassword(passwordEncoder.encode(dto.getPassword()));
-            }
-
             user.setRole(dto.getRole());
             return userRepository.save(user);
         }).orElseThrow(() -> new RuntimeException("User not found"));
     }
 
+    //UPDATE
+    public User updateUserPassword(Long id, String newPassword) {
+        return userRepository.findById(id).map(user -> {
+            if (newPassword != null && !newPassword.isBlank()) {
+                user.setPassword(passwordEncoder.encode(newPassword));
+            }
+            return userRepository.save(user);
+        }).orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    public User setVerified(Long id, boolean verified) {
+        return userRepository.findById(id).map(user -> {
+            user.setVerified(verified);
+            return userRepository.save(user);
+        }).orElseThrow(() -> new RuntimeException("User not found"));
+    }
 
     // DELETE
     public void deleteUser(Long id) {
         userRepository.deleteById(id);
+    }
+
+    public Optional<User> getUserByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 }

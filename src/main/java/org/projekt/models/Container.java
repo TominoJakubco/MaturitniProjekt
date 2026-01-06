@@ -1,5 +1,6 @@
 package org.projekt.models;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 
 @Entity
@@ -14,11 +15,28 @@ public class Container {
     private int width;
     private int height;
     private double volume;
+
     @Column(name = "max_weight")
     private double maxWeight;
 
+    // ===== VLASTNÍK =====
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id") // FK na User
+    @JsonBackReference
+    private User owner;
+
     // Prázdný konstruktor nutný pro JPA
     public Container() {}
+
+    public Container(String name, int length, int width, int height, double volume, double maxWeight, User owner) {
+        this.name = name;
+        this.length = length;
+        this.width = width;
+        this.height = height;
+        this.volume = volume;
+        this.maxWeight = maxWeight;
+        this.owner = owner;
+    }
 
     // Gettery a settery
     public Long getId() { return id; }
@@ -41,4 +59,7 @@ public class Container {
 
     public double getMaxWeight() { return maxWeight; }
     public void setMaxWeight(double maxWeight) { this.maxWeight = maxWeight; }
+
+    public User getOwner() { return owner; }
+    public void setOwner(User owner) { this.owner = owner; }
 }

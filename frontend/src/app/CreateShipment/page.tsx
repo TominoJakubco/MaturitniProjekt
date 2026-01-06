@@ -1,6 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
+import Navbar from "../../components/Navbar";
+import { InputField, Button, CreateForm } from "../../components/FormComponents";
+import { Table } from "../../components/Table";
+import PageLayout from "../../components/Pagelayout";
 
 interface Box {
     id: number;
@@ -22,31 +26,27 @@ interface Container {
     maxWeight: number;
 }
 
+type PackingMethod = "skjolber" | "xflp" | "realistic";
+
 export default function CreateShipment() {
     const [shipmentName, setShipmentName] = useState("");
     const [boxes, setBoxes] = useState<Box[]>([]);
     const [containers, setContainers] = useState<Container[]>([]);
     const [selectedBoxes, setSelectedBoxes] = useState<number[]>([]);
     const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
-
+    const [packingMethod] = useState<PackingMethod>("xflp");
     const [createdShipmentId, setCreatedShipmentId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
     const handleApiError = useCallback((error: any) => {
-        if (error.response?.status === 401) {
-            alert("Nejste přihlášeni");
-        } else if (error.response?.status === 403) {
-            alert("Nemáte dostatečná oprávnění");
-        } else {
-            const message = error.response?.data?.message || error.message || "Neznámá chyba";
-            alert("Došlo k chybě: " + message);
-        }
+        if (error.response?.status === 401) alert("Nejste přihlášeni");
+        else if (error.response?.status === 403) alert("Nemáte dostatečná oprávnění");
+        else alert(error.response?.data?.message || "Došlo k chybě");
     }, []);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
-        setError("");
         try {
             const [boxRes, containerRes] = await Promise.all([
                 axiosInstance.get<Box[]>("/api/boxes"),
@@ -54,250 +54,150 @@ export default function CreateShipment() {
             ]);
             setBoxes(boxRes.data);
             setContainers(containerRes.data);
+            setError("");
         } catch (err: any) {
-            console.error("Fetch error:", err);
-            setError("Nepodařilo se načíst boxy nebo kontejnery.");
+            setError("Nepodařilo se načíst data");
             handleApiError(err);
         } finally {
             setLoading(false);
         }
     }, [handleApiError]);
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
-    const toggleBoxSelection = (id: number) => {
-        setSelectedBoxes((prev) =>
-            prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]
-        );
+    const toggleBox = (id: number) => {
+        setSelectedBoxes((prev) => prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]);
     };
 
     const handleCreateShipment = async () => {
-        if (!shipmentName.trim()) {
-            alert("Zadejte název shipmentu.");
-            return;
-        }
-        if (selectedBoxes.length === 0) {
-            alert("Vyber alespoň 1 box.");
-            return;
-        }
-        if (!selectedContainer || !selectedContainer.id) {
-            alert("Vyber kontejner.");
-            return;
-        }
-
+        if (!shipmentName.trim() || !selectedContainer) return;
         try {
-            const res = await axiosInstance.post("/api/shipments", {
+            const res = await axiosInstance.post(`/api/shipments/${packingMethod}`, {
                 shipmentName,
                 boxes: selectedBoxes,
                 containerTypeId: selectedContainer.id,
             });
-
-            let shipmentId: number | null = null;
-            if (res.data?.id) shipmentId = res.data.id;
-            else if (res.data?.shipmentId) shipmentId = res.data.shipmentId;
-            else if (res.data?.shipment?.id) shipmentId = res.data.shipment.id;
-            else if (typeof res.data === "number") shipmentId = res.data;
-            else if (res.data?.data?.id) shipmentId = res.data.data.id;
-
-            if (shipmentId) {
-                setCreatedShipmentId(shipmentId);
-            } else {
-                console.error("Could not find ID in response:", res.data);
-                alert("Shipment pravděpodobně vytvořen, ale nemůžu najít ID. Zkontroluj konzoli.");
-            }
-        } catch (err: any) {
-            console.error("Create shipment error:", err);
-            handleApiError(err);
-        }
+            const id = res.data?.id ?? res.data?.shipmentId ?? res.data?.shipment?.id ?? (typeof res.data === "number" ? res.data : null);
+            if (id) setCreatedShipmentId(id);
+        } catch (err: any) { handleApiError(err); }
     };
 
-    const handleResetForm = () => {
-        setCreatedShipmentId(null);
-        setShipmentName("");
-        setSelectedBoxes([]);
-        setSelectedContainer(null);
-    };
+    const boxColumns = [
+        { key: "name", label: "Název" },
+        { key: "dimensions", label: "Rozměry", render: (b: Box) => `${b.length}×${b.width}×${b.height}` },
+        { key: "weight", label: "Váha", align: "right" as const },
+        { key: "amount", label: "Ks", align: "right" as const },
+    ];
+
+    const boxActions = [
+        { label: "Vybrat", onClick: (b: Box) => toggleBox(b.id), variant: "primary" as const, hidden: (b: Box) => selectedBoxes.includes(b.id) },
+        { label: "Odebrat", onClick: (b: Box) => toggleBox(b.id), variant: "danger" as const, hidden: (b: Box) => !selectedBoxes.includes(b.id) },
+    ];
 
     return (
-        <div style={{ maxWidth: 1200, margin: "50px auto", fontFamily: "Arial, sans-serif", padding: "0 20px" }}>
-            <Link to="/" style={{ display: "inline-block", marginBottom: "20px", color: "#FF9800", textDecoration: "none" }}>
-                ⬅️ Zpět na menu
-            </Link>
-
-            <h1 style={{ textAlign: "center" }}>Vytvořit shipment</h1>
-
-            {loading && <p style={{ textAlign: "center" }}>Načítám data...</p>}
-            {error && <p style={{ color: "red", textAlign: "center" }}>{error}</p>}
-
-            {createdShipmentId ? (
-                <div style={{ textAlign: "center", marginTop: 30 }}>
-                    <h2>Shipment úspěšně vytvořen! ID: {createdShipmentId}</h2>
-                    <div style={{ marginTop: 20 }}>
-                        <Link
-                            to={`/shipments/${createdShipmentId}`}
-                            style={{
-                                display: "inline-block",
-                                background: "#4CAF50",
-                                color: "white",
-                                padding: "12px 30px",
-                                borderRadius: "6px",
-                                textDecoration: "none",
-                                fontWeight: "bold",
-                                marginRight: 10
-                            }}
-                        >
-                            Zobrazit shipment
-                        </Link>
-                        <button
-                            onClick={handleResetForm}
-                            style={{
-                                background: "#2196F3",
-                                color: "white",
-                                padding: "12px 30px",
-                                border: "none",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                fontWeight: "bold"
-                            }}
-                        >
-                            Vytvořit další
-                        </button>
-                    </div>
-                </div>
-            ) : (
-                <>
-                    {/* FORM */}
-                    <div style={{ marginBottom: 30 }}>
-                        <label style={{ display: "block", marginBottom: 10, fontSize: "16px", fontWeight: "bold" }}>
-                            Název shipmentu:
-                        </label>
-                        <input
-                            type="text"
-                            value={shipmentName}
-                            onChange={(e) => setShipmentName(e.target.value)}
-                            placeholder="Např. Zásilka do Prahy"
-                            style={{
-                                padding: "10px",
-                                width: "100%",
-                                maxWidth: "400px",
-                                border: "1px solid #ddd",
-                                borderRadius: "4px",
-                                fontSize: "14px"
-                            }}
-                        />
-                    </div>
-
-                    {/* BOX SELECTION */}
-                    <h2>Vyber boxy</h2>
-                    {boxes.length === 0 && !loading ? (
-                        <p style={{ color: "#666" }}>Žádné boxy k dispozici.</p>
-                    ) : (
-                        <div style={{ overflowX: "auto", marginBottom: 30 }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #ddd" }}>
-                                <thead>
-                                <tr style={{ background: "#f5f5f5" }}>
-                                    <th style={{ padding: 12, borderBottom: "2px solid #ddd" }}>Vybrat</th>
-                                    <th style={{ padding: 12, borderBottom: "2px solid #ddd" }}>Název</th>
-                                    <th style={{ padding: 12, borderBottom: "2px solid #ddd" }}>Rozměry (L×W×H)</th>
-                                    <th style={{ padding: 12, borderBottom: "2px solid #ddd" }}>Váha (kg)</th>
-                                    <th style={{ padding: 12, borderBottom: "2px solid #ddd" }}>Počet ks</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {boxes.map((box) => (
-                                    <tr
-                                        key={box.id}
-                                        style={{
-                                            background: selectedBoxes.includes(box.id) ? "#e3f2fd" : "white",
-                                            cursor: "pointer"
-                                        }}
-                                        onClick={() => toggleBoxSelection(box.id)}
-                                    >
-                                        <td style={{ padding: 12, textAlign: "center", borderBottom: "1px solid #eee" }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedBoxes.includes(box.id)}
-                                                onChange={() => toggleBoxSelection(box.id)}
-                                                onClick={(e) => e.stopPropagation()}
-                                                style={{ cursor: "pointer" }}
-                                            />
-                                        </td>
-                                        <td style={{ padding: 12, borderBottom: "1px solid #eee" }}>{box.name}</td>
-                                        <td style={{ padding: 12, textAlign: "center", borderBottom: "1px solid #eee" }}>
-                                            {box.length}×{box.width}×{box.height}
-                                        </td>
-                                        <td style={{ padding: 12, textAlign: "center", borderBottom: "1px solid #eee" }}>{box.weight}</td>
-                                        <td style={{ padding: 12, textAlign: "center", borderBottom: "1px solid #eee" }}>{box.amount}</td>
-                                    </tr>
-                                ))}
-                                </tbody>
-                            </table>
+        <>
+            <Navbar breadcrumb={[{ label: "Home", path: "../" }, { label: "Nový shipment" }]} />
+            <PageLayout>
+                {createdShipmentId ? (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+                        <div style={{ textAlign: "center", background: "rgba(255,255,255,0.03)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "24px", padding: "60px 48px", boxShadow: "0 24px 60px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)", maxWidth: "480px", width: "100%", animation: "scaleIn 0.4s cubic-bezier(0.16,1,0.3,1)" }}>
+                            <div style={{ fontSize: "3rem", marginBottom: "20px" }}>✅</div>
+                            <h2 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#ffffff", marginBottom: "8px", letterSpacing: "-0.02em" }}>
+                                Shipment vytvořen!
+                            </h2>
+                            <p style={{ color: "rgba(255,255,255,0.5)", marginBottom: "36px", fontSize: "0.9375rem" }}>
+                                ID: <span style={{ color: "#93c5fd", fontWeight: 700 }}>#{createdShipmentId}</span>
+                            </p>
+                            <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+                                <Link to={`/shipments/${createdShipmentId}`} style={{ textDecoration: "none" }}>
+                                    <Button onClick={() => {}}>🔍 Detail shipmentu</Button>
+                                </Link>
+                                <Button variant="secondary" onClick={() => setCreatedShipmentId(null)}>
+                                    ➕ Vytvořit další
+                                </Button>
+                            </div>
                         </div>
-                    )}
-
-                    {/* CONTAINER SELECTION */}
-                    <h2>Vyber kontejner</h2>
-                    {containers.length === 0 && !loading ? (
-                        <p style={{ color: "#666" }}>Žádné kontejnery k dispozici.</p>
-                    ) : (
-                        <select
-                            style={{
-                                padding: "10px",
-                                marginBottom: 30,
-                                width: "100%",
-                                maxWidth: "400px",
-                                border: "1px solid #ddd",
-                                borderRadius: "4px",
-                                fontSize: "14px",
-                                cursor: "pointer"
-                            }}
-                            value={selectedContainer?.id || ""}
-                            onChange={(e) => {
-                                const sel = containers.find(c => c.id === Number(e.target.value));
-                                setSelectedContainer(sel || null);
-                            }}
-                        >
-                            <option value="">-- Vyber kontejner --</option>
-                            {containers.map(c => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name} ({c.length}×{c.width}×{c.height}) - max {c.maxWeight}kg
-                                </option>
-                            ))}
-                        </select>
-                    )}
-
-                    <div style={{ marginTop: 30 }}>
-                        <button
-                            onClick={handleCreateShipment}
-                            disabled={loading || !shipmentName.trim() || selectedBoxes.length === 0 || !selectedContainer}
-                            style={{
-                                background: (!shipmentName.trim() || selectedBoxes.length === 0 || !selectedContainer)
-                                    ? "#cccccc"
-                                    : "#4CAF50",
-                                color: "white",
-                                padding: "12px 30px",
-                                border: "none",
-                                borderRadius: "6px",
-                                cursor: (!shipmentName.trim() || selectedBoxes.length === 0 || !selectedContainer)
-                                    ? "not-allowed"
-                                    : "pointer",
-                                fontSize: "16px",
-                                fontWeight: "bold"
-                            }}
-                        >
+                    </div>
+                ) : (
+                    <>
+                        <h1 style={{ fontSize: "2.5rem", fontWeight: 700, color: "#ffffff", marginBottom: "40px", letterSpacing: "-0.03em" }}>
                             Vytvořit shipment
-                        </button>
-                    </div>
+                        </h1>
 
-                    {selectedBoxes.length > 0 && (
-                        <div style={{ marginTop: 20, padding: 15, background: "#f9f9f9", borderRadius: 4, border: "1px solid #e0e0e0" }}>
-                            <strong>Vybrané boxy:</strong> {selectedBoxes.length} ks
+                        {error && (
+                            <div style={{ padding: "14px 18px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px", color: "#fca5a5", marginBottom: "24px", fontSize: "0.9rem" }}>
+                                ⚠️ {error}
+                            </div>
+                        )}
+
+                        <CreateForm title="Základní informace" onSubmit={handleCreateShipment} submitLabel="Vytvořit shipment" submitIcon="🚚">
+                            <InputField label="Název shipmentu" value={shipmentName} onChange={(v) => setShipmentName(v as string)} required />
+
+                            {/* Container select – dark styled */}
+                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "rgba(255,255,255,0.7)", letterSpacing: "-0.01em" }}>
+                                    Kontejner <span style={{ color: "#ef4444" }}>*</span>
+                                </label>
+                                <select
+                                    required
+                                    value={selectedContainer?.id ?? ""}
+                                    onChange={(e) => {
+                                        const id = Number(e.target.value);
+                                        setSelectedContainer(containers.find((c) => c.id === id) || null);
+                                    }}
+                                    style={{
+                                        padding: "14px 16px",
+                                        borderRadius: "8px",
+                                        border: "1.5px solid rgba(255,255,255,0.1)",
+                                        fontSize: "0.9375rem",
+                                        outline: "none",
+                                        background: "rgba(255,255,255,0.05)",
+                                        color: selectedContainer ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.3)",
+                                        backdropFilter: "blur(10px)",
+                                        cursor: "pointer",
+                                        fontFamily: "'Helvetica Neue', -apple-system, sans-serif",
+                                        transition: "all 0.2s",
+                                    }}
+                                    onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(59,130,246,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)"; }}
+                                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                                >
+                                    <option value="" disabled>-- vyberte kontejner --</option>
+                                    {containers.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.name} ({c.length}×{c.width}×{c.height}, max {c.maxWeight} kg)
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                <label style={{ fontSize: "0.875rem", fontWeight: 600, color: "rgba(255,255,255,0.7)", letterSpacing: "-0.01em" }}>
+                                    Metoda balení
+                                </label>
+                                <div style={{ padding: "14px 16px", borderRadius: "8px", border: "1.5px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.4)", fontSize: "0.9375rem", backdropFilter: "blur(10px)" }}>
+                                    {packingMethod}
+                                </div>
+                            </div>
+                        </CreateForm>
+
+                        {/* Box selection */}
+                        <div style={{ marginBottom: "20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+                            <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "rgba(255,255,255,0.95)", letterSpacing: "-0.02em", margin: 0 }}>
+                                Výběr boxů
+                            </h2>
+                            {selectedBoxes.length > 0 && (
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px", background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: "20px" }}>
+                                    <span style={{ color: "#93c5fd", fontWeight: 700, fontSize: "0.9rem" }}>
+                                        ✓ {selectedBoxes.length} {selectedBoxes.length === 1 ? "box vybrán" : "boxy vybrány"}
+                                    </span>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </>
-            )}
-        </div>
+
+                        <Table data={boxes} columns={boxColumns} actions={boxActions} idKey="id" loading={loading} emptyMessage="Žádné boxy" />
+                    </>
+                )}
+            </PageLayout>
+        </>
     );
 }

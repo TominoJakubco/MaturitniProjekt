@@ -35,7 +35,7 @@ public class AuthController {
         Optional<User> existing = userRepository.findByEmail(user.getEmail());
         if (existing.isPresent() && passwordEncoder.matches(user.getPassword(), existing.get().getPassword())) {
             System.out.println("Login successful for user: " + user.getEmail());
-            return jwtService.generateToken(existing.get().getEmail());
+            return jwtService.generateToken(existing.get().getEmail(), existing.get().getAuthorities());
         } else {
             throw new RuntimeException("Invalid credentials");
         }

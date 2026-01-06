@@ -1,6 +1,7 @@
 package org.projekt.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +25,8 @@ public class ContainerInstance {
     @JsonIgnore
     private Shipment shipment;
 
-    @OneToMany(mappedBy = "containerInstance", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "containerInstance", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties("containerInstance")
     private List<Placement> placements = new ArrayList<>();
 
     public ContainerInstance() {}

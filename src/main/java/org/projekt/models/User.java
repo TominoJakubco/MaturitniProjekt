@@ -21,9 +21,12 @@ public class User implements UserDetails {
     private String surname;
     private String password;
     private String role;
+    @Column(nullable = false)
+    private boolean verified = false;
 
     // Prázdný konstruktor je nutný pro JPA
     public User() {}
+
 
     // Gettery a settery
     public Long getId() { return id; }
@@ -44,9 +47,13 @@ public class User implements UserDetails {
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
 
+    public boolean isVerified() { return verified; }
+    public void setVerified(boolean verified) {this.verified = verified;}
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("USER"));
+        String r = (role != null && !role.isBlank()) ? role : "ROLE_USER";
+        return List.of(new SimpleGrantedAuthority(r));
     }
 
     @Override

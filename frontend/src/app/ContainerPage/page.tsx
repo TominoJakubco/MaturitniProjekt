@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
+import Navbar from "../../components/Navbar";
+import { InputField, CreateForm, EditModal } from "../../components/FormComponents";
+import { Table } from "../../components/Table";
+import PageLayout from "../../components/Pagelayout";
+import ShareModal from "../../components/ShareModal";
 
 interface Container {
     id?: number;
@@ -13,26 +17,19 @@ interface Container {
 
 export default function ContainerPage() {
     const [containers, setContainers] = useState<Container[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [newContainer, setNewContainer] = useState<Container>({
-        name: "",
-        length: 0,
-        width: 0,
-        height: 0,
-        maxWeight: 0,
-    });
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; name: string } | null>(null);
+    const [shareTarget, setShareTarget] = useState<Container | null>(null);
+
+    const emptyContainer: Container = { name: "", length: 0, width: 0, height: 0, maxWeight: 0 };
+    const [newContainer, setNewContainer] = useState<Container>(emptyContainer);
     const [editContainer, setEditContainer] = useState<Container | null>(null);
 
-    const handleApiError = (error: any) => {
-        if (error.response?.status === 401) {
-            alert('Nejste přihlášeni');
-            // přesměrování na login může být tady
-        } else if (error.response?.status === 403) {
-            alert('Nemáte dostatečná oprávnění');
-        } else {
-            alert('Došlo k chybě: ' + error.message);
-        }
+    const handleApiError = (err: any) => {
+        if (err.response?.status === 401) alert("Nejste přihlášeni");
+        else if (err.response?.status === 403) alert("Nemáte dostatečná oprávnění");
+        else alert("Došlo k chybě");
     };
 
     const fetchContainers = async () => {
@@ -40,47 +37,24 @@ export default function ContainerPage() {
         try {
             const res = await axiosInstance.get<Container[]>("/api/containers");
             setContainers(res.data);
-        } catch (err) {
-            console.error("Chyba při načítání kontejnerů:", err);
-            setError("Nepodařilo se načíst kontejnery.");
+            setError("");
+        } catch (err: any) {
+            setError("Nepodařilo se načíst kontejnery");
             handleApiError(err);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchContainers();
-    }, []);
+    useEffect(() => { fetchContainers(); }, []);
 
     const handleAddContainer = async () => {
-        if (!newContainer.name) {
-            alert("Vyplň všechny povinné údaje!");
-            return;
-        }
+        if (!newContainer.name) return;
         try {
             await axiosInstance.post("/api/containers", newContainer);
-            setNewContainer({ name: "", length: 0, width: 0, height: 0, maxWeight: 0 });
+            setNewContainer(emptyContainer);
             await fetchContainers();
-            alert("Kontejner přidán!");
-        } catch (err) {
-            console.error(err);
-            alert("Chyba při přidávání kontejneru");
-            handleApiError(err);
-        }
-    };
-
-    const handleDeleteContainer = async (id: number) => {
-        if (!window.confirm("Opravdu chceš smazat tento kontejner?")) return;
-        try {
-            await axiosInstance.delete(`/api/containers/${id}`);
-            await fetchContainers();
-            alert("Kontejner smazán!");
-        } catch (err) {
-            console.error(err);
-            alert("Chyba při mazání kontejneru");
-            handleApiError(err);
-        }
+        } catch (err: any) { handleApiError(err); }
     };
 
     const handleUpdateContainer = async () => {
@@ -89,157 +63,106 @@ export default function ContainerPage() {
             await axiosInstance.put(`/api/containers/${editContainer.id}`, editContainer);
             setEditContainer(null);
             await fetchContainers();
-            alert("Kontejner aktualizován!");
-        } catch (err) {
-            console.error(err);
-            alert("Chyba při aktualizaci kontejneru");
-            handleApiError(err);
-        }
+        } catch (err: any) { handleApiError(err); }
     };
 
+    const handleDeleteContainer = async () => {
+        if (!deleteConfirm?.id) return;
+        try {
+            await axiosInstance.delete(`/api/containers/${deleteConfirm.id}`);
+            setDeleteConfirm(null);
+            await fetchContainers();
+        } catch (err: any) { handleApiError(err); }
+    };
+
+    const columns = [
+        { key: "id", label: "ID", width: "70px", align: "center" as const },
+        { key: "name", label: "Název" },
+        { key: "length", label: "Délka", align: "right" as const },
+        { key: "width", label: "Šířka", align: "right" as const },
+        { key: "height", label: "Výška", align: "right" as const },
+        { key: "maxWeight", label: "Max. váha", align: "right" as const },
+    ];
+
+    const actions = [
+        { label: "Upravit", icon: "✏️", onClick: (c: Container) => setEditContainer(c), variant: "secondary" as const },
+        { label: "Sdílet", icon: "🔗", onClick: (c: Container) => setShareTarget(c), variant: "secondary" as const },
+        { label: "Smazat", icon: "🗑️", onClick: (c: Container) => setDeleteConfirm({ id: c.id!, name: c.name }), variant: "danger" as const },
+    ];
+
     return (
-        <div style={{ maxWidth: 1000, margin: "50px auto", fontFamily: "Arial, sans-serif" }}>
-            <Link to="/" style={{ display: "inline-block", marginBottom: "20px", color: "#FF9800" }}>
-                ⬅️ Zpět na menu
-            </Link>
+        <>
+            <Navbar breadcrumb={[{ label: "Home", path: "../" }, { label: "Kontejnery" }]} />
+            <PageLayout>
+                <h1 style={{ fontSize: "2.5rem", fontWeight: 700, color: "#ffffff", marginBottom: "40px", letterSpacing: "-0.03em" }}>
+                    Správa kontejnerů
+                </h1>
 
-            <h1 style={{ textAlign: "center" }}>Správa kontejnerů</h1>
+                {error && (
+                    <div style={{ padding: "14px 18px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px", color: "#fca5a5", marginBottom: "24px", fontSize: "0.9rem" }}>
+                        ⚠️ {error}
+                    </div>
+                )}
 
-            {loading && <p>Načítám kontejnery...</p>}
-            {error && <p style={{ color: "red" }}>{error}</p>}
+                <CreateForm title="Přidat kontejner" description="Zadejte parametry nového kontejneru" onSubmit={handleAddContainer} submitLabel="Přidat">
+                    <InputField label="Název" value={newContainer.name} onChange={(v) => setNewContainer({ ...newContainer, name: v as string })} required />
+                    <InputField label="Délka" type="number" value={newContainer.length} onChange={(v) => setNewContainer({ ...newContainer, length: v as number })} />
+                    <InputField label="Šířka" type="number" value={newContainer.width} onChange={(v) => setNewContainer({ ...newContainer, width: v as number })} />
+                    <InputField label="Výška" type="number" value={newContainer.height} onChange={(v) => setNewContainer({ ...newContainer, height: v as number })} />
+                    <InputField label="Maximální váha" type="number" value={newContainer.maxWeight} onChange={(v) => setNewContainer({ ...newContainer, maxWeight: v as number })} />
+                </CreateForm>
 
-            <h2>Přidat kontejner</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
-                <input
-                    placeholder="Název"
-                    value={newContainer.name}
-                    onChange={(e) => setNewContainer({ ...newContainer, name: e.target.value })}
-                />
-                <input
-                    placeholder="Délka"
-                    type="number"
-                    value={newContainer.length || ""}
-                    onChange={(e) => setNewContainer({ ...newContainer, length: Number(e.target.value) })}
-                />
-                <input
-                    placeholder="Šířka"
-                    type="number"
-                    value={newContainer.width || ""}
-                    onChange={(e) => setNewContainer({ ...newContainer, width: Number(e.target.value) })}
-                />
-                <input
-                    placeholder="Výška"
-                    type="number"
-                    value={newContainer.height || ""}
-                    onChange={(e) => setNewContainer({ ...newContainer, height: Number(e.target.value) })}
-                />
-                <input
-                    placeholder="Max. váha"
-                    type="number"
-                    value={newContainer.maxWeight || ""}
-                    onChange={(e) => setNewContainer({ ...newContainer, maxWeight: Number(e.target.value) })}
-                />
-            </div>
-            <button type="button" style={{ marginTop: 10 }} onClick={handleAddContainer}>
-                Přidat
-            </button>
+                <Table data={containers} columns={columns} actions={actions} idKey="id" loading={loading} emptyMessage="Žádné kontejnery" />
 
-            <hr style={{ margin: "30px 0" }} />
-
-            {!loading && !error && (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead>
-                    <tr style={{ background: "#f2f2f2" }}>
-                        <th style={{ border: "1px solid #ddd", padding: "8px" }}>ID</th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px" }}>Název</th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px" }}>Délka</th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px" }}>Šířka</th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px" }}>Výška</th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px" }}>Max. váha</th>
-                        <th style={{ border: "1px solid #ddd", padding: "8px" }}>Akce</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {containers.length === 0 && (
-                        <tr>
-                            <td
-                                style={{ border: "1px solid #ddd", padding: "8px", textAlign: "center" }}
-                                colSpan={8}
-                            >
-                                Žádné kontejnery
-                            </td>
-                        </tr>
+                <EditModal title="Upravit kontejner" description="Změň parametry vybraného kontejneru" isOpen={!!editContainer} onClose={() => setEditContainer(null)} onSave={handleUpdateContainer}>
+                    {editContainer && (
+                        <>
+                            <InputField label="Název" value={editContainer.name} onChange={(v) => setEditContainer({ ...editContainer, name: v as string })} required />
+                            <InputField label="Délka" type="number" value={editContainer.length} onChange={(v) => setEditContainer({ ...editContainer, length: v as number })} />
+                            <InputField label="Šířka" type="number" value={editContainer.width} onChange={(v) => setEditContainer({ ...editContainer, width: v as number })} />
+                            <InputField label="Výška" type="number" value={editContainer.height} onChange={(v) => setEditContainer({ ...editContainer, height: v as number })} />
+                            <InputField label="Maximální váha" type="number" value={editContainer.maxWeight} onChange={(v) => setEditContainer({ ...editContainer, maxWeight: v as number })} />
+                        </>
                     )}
-                    {containers.map((container) => (
-                        <tr key={container.id}>
-                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{container.id}</td>
-                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{container.name}</td>
-                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{container.length}</td>
-                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{container.width}</td>
-                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{container.height}</td>
-                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>{container.maxWeight}</td>
-                            <td style={{ border: "1px solid #ddd", padding: "8px" }}>
-                                <button type="button" onClick={() => setEditContainer(container)}>
-                                    ✏️ Upravit
-                                </button>
-                                <button
-                                    type="button"
-                                    style={{ marginLeft: 8, color: "red" }}
-                                    onClick={() => handleDeleteContainer(container.id!)}
-                                >
-                                    🗑️ Smazat
-                                </button>
-                            </td>
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
-            )}
+                </EditModal>
 
-            {editContainer && (
-                <div style={{ marginTop: 30, border: "1px solid #ccc", padding: 20 }}>
-                    <h3>Upravit kontejner</h3>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
-                        <input
-                            placeholder="Název"
-                            value={editContainer.name}
-                            onChange={(e) => setEditContainer({ ...editContainer, name: e.target.value })}
-                        />
-                        <input
-                            placeholder="Délka"
-                            type="number"
-                            value={editContainer.length}
-                            onChange={(e) => setEditContainer({ ...editContainer, length: Number(e.target.value) })}
-                        />
-                        <input
-                            placeholder="Šířka"
-                            type="number"
-                            value={editContainer.width}
-                            onChange={(e) => setEditContainer({ ...editContainer, width: Number(e.target.value) })}
-                        />
-                        <input
-                            placeholder="Výška"
-                            type="number"
-                            value={editContainer.height}
-                            onChange={(e) => setEditContainer({ ...editContainer, height: Number(e.target.value) })}
-                        />
-                        <input
-                            placeholder="Max. váha"
-                            type="number"
-                            value={editContainer.maxWeight}
-                            onChange={(e) => setEditContainer({ ...editContainer, maxWeight: Number(e.target.value) })}
-                        />
+                {/* Delete Confirmation Modal */}
+                {deleteConfirm && (
+                    <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px", animation: "fadeInUp 0.2s ease-out" }}>
+                        <div style={{ background: "rgba(15,23,42,0.98)", backdropFilter: "blur(40px)", borderRadius: "20px", padding: "40px", maxWidth: "420px", width: "100%", boxShadow: "0 32px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                            <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", marginBottom: "20px" }}>
+                                🗑️
+                            </div>
+                            <h3 style={{ fontSize: "1.375rem", fontWeight: 700, color: "#ffffff", marginBottom: "12px", letterSpacing: "-0.02em" }}>
+                                Smazat kontejner
+                            </h3>
+                            <p style={{ fontSize: "0.9375rem", color: "rgba(255,255,255,0.6)", marginBottom: "32px", lineHeight: 1.6 }}>
+                                Opravdu chcete smazat kontejner <strong style={{ color: "rgba(255,255,255,0.9)" }}>{deleteConfirm.name}</strong>? Tato akce je nevratná.
+                            </p>
+                            <div style={{ display: "flex", gap: "12px" }}>
+                                <button onClick={() => setDeleteConfirm(null)} style={{ flex: 1, padding: "12px", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, transition: "all 0.2s" }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "rgba(255,255,255,0.7)"; }}>
+                                    Zrušit
+                                </button>
+                                <button onClick={handleDeleteContainer} style={{ flex: 1, padding: "12px", background: "linear-gradient(135deg, rgba(239,68,68,0.2), rgba(220,38,38,0.15))", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.4)", borderRadius: "8px", cursor: "pointer", fontSize: "0.9rem", fontWeight: 600, transition: "all 0.2s" }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(239,68,68,0.35), rgba(220,38,38,0.28))"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.6)"; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(239,68,68,0.2), rgba(220,38,38,0.15))"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.4)"; }}>
+                                    Smazat
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div style={{ marginTop: 10 }}>
-                        <button type="button" onClick={handleUpdateContainer}>
-                            💾 Uložit změny
-                        </button>
-                        <button type="button" style={{ marginLeft: 10 }} onClick={() => setEditContainer(null)}>
-                            ❌ Zrušit
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
+                )}
+            </PageLayout>
+
+            <ShareModal
+                isOpen={shareTarget !== null}
+                onClose={() => setShareTarget(null)}
+                resourceId={shareTarget?.id!}
+                resourceType="containers"
+                resourceName={shareTarget?.name}
+            />
+        </>
     );
 }
