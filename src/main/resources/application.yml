@@ -3,16 +3,13 @@ server:
 
 spring:
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/mydb}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/mydb}?sslmode=disable
     username: ${DATABASE_USERNAME:myuser}
     password: ${DATABASE_PASSWORD:heslo}
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: ${SHOW_SQL:true}
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: ${SHOW_SQL:false}
 
 jwt:
   secret: ${JWT_SECRET:aaaaaaaaaabbbbbbbbbbccccccccccdddddddddd}
