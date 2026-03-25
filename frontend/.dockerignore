@@ -2,3 +2,8 @@ node_modules
 build
 .env
 .env.*
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+src/setupTests.ts
