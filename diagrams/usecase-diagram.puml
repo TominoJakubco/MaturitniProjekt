@@ -1,0 +1,145 @@
+@startuml usecase-diagram
+
+skinparam actorStyle awesome
+skinparam shadowing false
+skinparam defaultFontSize 12
+skinparam usecase {
+    BackgroundColor #FEFECE
+    BorderColor #A80036
+}
+
+title Use Case Diagram – 3D Packing System
+
+left to right direction
+
+' ============================================================
+'  ACTORS
+' ============================================================
+
+actor "Guest" as Guest
+actor "User" as AuthUser
+actor "Admin" as Admin
+
+Admin --|> AuthUser : extends
+
+' ============================================================
+'  SYSTEM BOUNDARY
+' ============================================================
+
+rectangle "3D Packing System" {
+
+    ' ── Authentication ──
+    package "Authentication" {
+        usecase "Register" as UC_Register
+        usecase "Login" as UC_Login
+    }
+
+    ' ── Box Management ──
+    package "Box Management" {
+        usecase "Create Box" as UC_CreateBox
+        usecase "View Own Boxes" as UC_ViewBoxes
+        usecase "Edit Box" as UC_EditBox
+        usecase "Delete Box" as UC_DeleteBox
+        usecase "Import Boxes\nfrom Excel" as UC_ImportExcel
+        usecase "Share Box" as UC_ShareBox
+        usecase "View All Boxes\n(Admin)" as UC_AllBoxes
+    }
+
+    ' ── Container Management ──
+    package "Container Management" {
+        usecase "Create Container" as UC_CreateContainer
+        usecase "View Own Containers" as UC_ViewContainers
+        usecase "Edit Container" as UC_EditContainer
+        usecase "Delete Container" as UC_DeleteContainer
+        usecase "Share Container" as UC_ShareContainer
+        usecase "View All Containers\n(Admin)" as UC_AllContainers
+    }
+
+    ' ── Shipment & Packing ──
+    package "Shipment & Packing" {
+        usecase "Create Shipment\n(choose algorithm)" as UC_CreateShipment
+        usecase "View Own Shipments" as UC_ViewShipments
+        usecase "View Shipment Detail" as UC_ShipmentDetail
+        usecase "View 3D Visualization" as UC_3DView
+        usecase "Delete Shipment" as UC_DeleteShipment
+        usecase "Share Shipment" as UC_ShareShipment
+        usecase "View All Shipments\n(Admin)" as UC_AllShipments
+    }
+
+    ' ── Packing Algorithms ──
+    package "Packing Algorithms" {
+        usecase "Pack with Skjolber" as UC_Skjolber
+        usecase "Pack with XFLP" as UC_XFLP
+        usecase "Pack with KlaudieAlg\n(Realistic)" as UC_Realistic
+    }
+
+    ' ── User Management (Admin) ──
+    package "User Management" {
+        usecase "View All Users" as UC_ViewUsers
+        usecase "Delete User" as UC_DeleteUser
+        usecase "Toggle User\nVerification" as UC_ToggleVerified
+    }
+
+    ' ── Profile ──
+    package "Profile" {
+        usecase "View Profile" as UC_ViewProfile
+        usecase "Edit Profile" as UC_EditProfile
+        usecase "Change Password" as UC_ChangePassword
+    }
+}
+
+' ============================================================
+'  RELATIONSHIPS – Guest
+' ============================================================
+
+Guest --> UC_Register
+Guest --> UC_Login
+
+' ============================================================
+'  RELATIONSHIPS – User
+' ============================================================
+
+AuthUser --> UC_CreateBox
+AuthUser --> UC_ViewBoxes
+AuthUser --> UC_EditBox
+AuthUser --> UC_DeleteBox
+AuthUser --> UC_ImportExcel
+AuthUser --> UC_ShareBox
+
+AuthUser --> UC_CreateContainer
+AuthUser --> UC_ViewContainers
+AuthUser --> UC_EditContainer
+AuthUser --> UC_DeleteContainer
+AuthUser --> UC_ShareContainer
+
+AuthUser --> UC_CreateShipment
+AuthUser --> UC_ViewShipments
+AuthUser --> UC_ShipmentDetail
+AuthUser --> UC_3DView
+AuthUser --> UC_DeleteShipment
+AuthUser --> UC_ShareShipment
+
+AuthUser --> UC_ViewProfile
+AuthUser --> UC_EditProfile
+AuthUser --> UC_ChangePassword
+
+' ── Packing algorithm selection (<<include>>) ──
+UC_CreateShipment ..> UC_Skjolber   : <<extend>>
+UC_CreateShipment ..> UC_XFLP       : <<extend>>
+UC_CreateShipment ..> UC_Realistic  : <<extend>>
+
+' ── Detail includes visualization ──
+UC_ShipmentDetail ..> UC_3DView : <<include>>
+
+' ============================================================
+'  RELATIONSHIPS – Admin
+' ============================================================
+
+Admin --> UC_ViewUsers
+Admin --> UC_DeleteUser
+Admin --> UC_ToggleVerified
+Admin --> UC_AllBoxes
+Admin --> UC_AllContainers
+Admin --> UC_AllShipments
+
+@enduml

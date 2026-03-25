@@ -1,0 +1,12 @@
+.git
+.gradle
+build
+.idea
+node_modules
+frontend
+diagrams
+*.iml
+*.ipr
+*.iws
+.env
+.env.*

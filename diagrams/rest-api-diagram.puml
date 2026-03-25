@@ -1,0 +1,192 @@
+@startuml rest-api-diagram
+
+skinparam shadowing false
+skinparam defaultFontSize 11
+skinparam rectangle {
+    RoundCorner 10
+}
+skinparam note {
+    BackgroundColor #FFFFDD
+}
+
+title REST API Endpoints – 3D Packing System
+
+' Legend
+legend top left
+  | Color | Meaning |
+  |<#90EE90>| GET |
+  |<#87CEEB>| POST |
+  |<#FFD700>| PUT |
+  |<#FFA07A>| PATCH |
+  |<#FF6961>| DELETE |
+endlegend
+
+' ============================================================
+'  AUTH CONTROLLER  /auth
+' ============================================================
+
+package "AuthController  «/auth»  (public)" as AuthPkg {
+
+    rectangle "<color:#87CEEB><b>POST</b></color>  /auth/register\nBody: { email, name, surname, password, role }\nResponse: \"User registered\"" as auth_register
+
+    rectangle "<color:#87CEEB><b>POST</b></color>  /auth/login\nBody: { email, password }\nResponse: JWT token (String)" as auth_login
+}
+
+' ============================================================
+'  USER CONTROLLER  /api/users
+' ============================================================
+
+package "UserController  «/api/users»  (authenticated)" as UserPkg {
+
+    rectangle "<color:#87CEEB><b>POST</b></color>  /api/users\nBody: User\nResponse: User" as user_create
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/users\nResponse: List<User>" as user_list
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/users/me\nResponse: User (current)" as user_me
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/users/{id}\nResponse: User" as user_get
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/users/by-email?email=...\nResponse: UserDTO" as user_email
+
+    rectangle "<color:#FFD700><b>PUT</b></color>  /api/users/{id}\nBody: UserUpdateDTO\nResponse: User" as user_update
+
+    rectangle "<color:#FFD700><b>PUT</b></color>  /api/users/pass/{id}\nBody: PasswordDTO\nResponse: User" as user_pass
+
+    rectangle "<color:#FFA07A><b>PATCH</b></color>  /api/users/{id}/verified\nBody: { verified: boolean }\nResponse: User" as user_verified
+
+    rectangle "<color:#FF6961><b>DELETE</b></color>  /api/users/{id}\nResponse: 200 OK" as user_delete
+}
+
+' ============================================================
+'  BOX CONTROLLER  /api/boxes
+' ============================================================
+
+package "BoxController  «/api/boxes»  (authenticated)" as BoxPkg {
+
+    rectangle "<color:#87CEEB><b>POST</b></color>  /api/boxes\nBody: Box\nResponse: Box" as box_create
+
+    rectangle "<color:#87CEEB><b>POST</b></color>  /api/boxes/upload\nBody: MultipartFile (Excel)\nResponse: \"OK\"" as box_upload
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/boxes\nResponse: List<Box> (visible)" as box_list
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/boxes/all\nResponse: List<Box> (admin)" as box_all
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/boxes/{id}\nResponse: Box" as box_get
+
+    rectangle "<color:#FFD700><b>PUT</b></color>  /api/boxes/{id}\nBody: Box\nResponse: Box" as box_update
+
+    rectangle "<color:#FF6961><b>DELETE</b></color>  /api/boxes/{id}\nResponse: 200 OK" as box_delete
+
+    rectangle "<color:#87CEEB><b>POST</b></color>  /api/boxes/{id}/share\nParams: targetUserId, canView, canEdit\nResponse: UserBox" as box_share
+}
+
+' ============================================================
+'  CONTAINER CONTROLLER  /api/containers
+' ============================================================
+
+package "ContainerController  «/api/containers»  (authenticated)" as ContPkg {
+
+    rectangle "<color:#87CEEB><b>POST</b></color>  /api/containers\nBody: Container\nResponse: Container" as cont_create
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/containers\nResponse: List<Container> (visible)" as cont_list
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/containers/all\nResponse: List<Container> (admin)" as cont_all
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/containers/{id}\nResponse: Container" as cont_get
+
+    rectangle "<color:#FFD700><b>PUT</b></color>  /api/containers/{id}\nBody: Container\nResponse: Container" as cont_update
+
+    rectangle "<color:#FF6961><b>DELETE</b></color>  /api/containers/{id}\nResponse: 200 OK" as cont_delete
+
+    rectangle "<color:#87CEEB><b>POST</b></color>  /api/containers/{id}/share\nParams: targetUserId, canView, canEdit\nResponse: UserContainer" as cont_share
+}
+
+' ============================================================
+'  SHIPMENT CONTROLLER  /api/shipments
+' ============================================================
+
+package "ShipmentController  «/api/shipments»  (authenticated)" as ShipPkg {
+
+    rectangle "<color:#87CEEB><b>POST</b></color>  /api/shipments/skjolber\nBody: ShipmentRequest\nResponse: Shipment" as ship_skjolber
+
+    rectangle "<color:#87CEEB><b>POST</b></color>  /api/shipments/xflp\nBody: ShipmentRequest\nResponse: Shipment" as ship_xflp
+
+    rectangle "<color:#87CEEB><b>POST</b></color>  /api/shipments/realistic\nBody: ShipmentRequest\nResponse: Shipment" as ship_realistic
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/shipments\nResponse: List<Shipment> (visible)" as ship_list
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/shipments/all\nResponse: List<Shipment> (admin)" as ship_all
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/shipments/{id}\nResponse: Shipment" as ship_get
+
+    rectangle "<color:#FF6961><b>DELETE</b></color>  /api/shipments/{id}\nResponse: 200 OK" as ship_delete
+
+    rectangle "<color:#87CEEB><b>POST</b></color>  /api/shipments/{id}/share\nParams: targetUserId, canView, canEdit\nResponse: UserShipment" as ship_share
+
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/shipments/{id}/visualization\nResponse: ShipmentVisualizationDTO" as ship_viz
+}
+
+' ============================================================
+'  OTHER
+' ============================================================
+
+package "HelloController  «/api»" as HelloPkg {
+    rectangle "<color:#90EE90><b>GET</b></color>  /api/hello\nResponse: \"Ahoj ze Spring Boot backendu\"" as hello
+}
+
+' ============================================================
+'  REQUEST / RESPONSE MODELS
+' ============================================================
+
+note bottom of ShipPkg
+  <b>ShipmentRequest</b>
+  {
+    shipmentName : String,
+    containerTypeId : Long,
+    boxes : List<Long>
+  }
+
+  <b>ShipmentVisualizationDTO</b>
+  {
+    containers: [
+      {
+        name, length, width, height,
+        placements: [
+          { boxName, x, y, z,
+            dx, dy, dz,
+            placementId, boxId }
+        ]
+      }
+    ]
+  }
+end note
+
+note bottom of UserPkg
+  <b>UserUpdateDTO</b>
+  { email, name, surname, password, role }
+
+  <b>PasswordDTO</b>
+  { password }
+
+  <b>UserDTO</b>
+  { id, email, name, surname }
+end note
+
+' ============================================================
+'  SECURITY FLOW
+' ============================================================
+
+note as SecurityNote
+  <b>Authentication Flow</b>
+  All /api/** endpoints require
+  <b>Authorization: Bearer <JWT></b> header.
+
+  JWT token is obtained via
+  POST /auth/login.
+
+  /auth/** endpoints are public.
+
+  /admin/** requires ROLE_ADMIN.
+end note
+
+@enduml

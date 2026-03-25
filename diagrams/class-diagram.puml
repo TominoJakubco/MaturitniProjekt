@@ -1,0 +1,448 @@
+@startuml class-diagram
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontSize 11
+
+title UML Class Diagram – 3D Packing System
+
+' ============================================================
+'  ENTITIES
+' ============================================================
+
+package "models" {
+
+    enum Role {
+        USER
+        ADMIN
+    }
+
+    class User << Entity >> {
+        - id : Long
+        - email : String
+        - name : String
+        - surname : String
+        - password : String
+        - role : Role
+        - verified : boolean
+        --
+        + getAuthorities() : Collection<GrantedAuthority>
+        + getUsername() : String
+    }
+
+    class Box << Entity >> {
+        - id : Long
+        - name : String
+        - amount : int
+        - length : double
+        - width : double
+        - height : double
+        - volume : double
+        - volumeTotal : double
+        - weightTotal : double
+    }
+
+    class Container << Entity >> {
+        - id : Long
+        - name : String
+        - length : double
+        - width : double
+        - height : double
+        - volume : double
+        - maxWeight : double
+    }
+
+    class Shipment << Entity >> {
+        - id : Long
+        - name : String
+        - description : String
+        - createdAt : LocalDateTime
+    }
+
+    class ContainerInstance << Entity >> {
+        - id : Long
+        - usedVolume : double
+        - usedWeight : double
+    }
+
+    class Placement << Entity >> {
+        - id : Long
+        - boxNumber : int
+        - minX : double
+        - maxX : double
+        - minY : double
+        - maxY : double
+        - minZ : double
+        - maxZ : double
+        - rotation : String
+        - weight : double
+    }
+}
+
+package "models.manytomany" {
+
+    class UserBox << Entity >> {
+        - id : UserBoxId
+        - canView : boolean
+        - canEdit : boolean
+    }
+
+    class UserBoxId << Embeddable >> {
+        - userId : Long
+        - boxId : Long
+    }
+
+    class UserContainer << Entity >> {
+        - id : UserContainerId
+        - canView : boolean
+        - canEdit : boolean
+    }
+
+    class UserContainerId << Embeddable >> {
+        - userId : Long
+        - containerId : Long
+    }
+
+    class UserShipment << Entity >> {
+        - id : UserShipmentId
+        - canView : boolean
+        - canEdit : boolean
+    }
+
+    class UserShipmentId << Embeddable >> {
+        - userId : Long
+        - shipmentId : Long
+    }
+}
+
+' ── Entity relationships ──
+
+Box        "* " --> "1" User : owner >
+Container  "* " --> "1" User : owner >
+Shipment   "* " --> "1" User : owner >
+
+Shipment       "1" *-- "* " ContainerInstance : contains >
+ContainerInstance "* " --> "1" Container      : containerType >
+ContainerInstance "1" *-- "* " Placement      : contains >
+Placement      "* " --> "1" Box             : boxType >
+
+UserBox       "* " --> "1" User
+UserBox       "* " --> "1" Box
+UserContainer "* " --> "1" User
+UserContainer "* " --> "1" Container
+UserShipment  "* " --> "1" User
+UserShipment  "* " --> "1" Shipment
+
+User --> Role
+
+' ============================================================
+'  DTOs
+' ============================================================
+
+package "dto" {
+
+    class UserDTO << DTO >> {
+        + id : Long
+        + email : String
+        + name : String
+        + surname : String
+    }
+
+    class UserUpdateDTO << DTO >> {
+        + email : String
+        + name : String
+        + surname : String
+        + password : String
+        + role : Role
+    }
+
+    class PasswordDTO << DTO >> {
+        + password : String
+    }
+
+    class ShipmentRequest << DTO >> {
+        + shipmentName : String
+        + containerTypeId : Long
+        + boxes : List<Long>
+    }
+
+    class ShipmentVisualizationDTO << DTO >> {
+        + containers : List<ContainerDTO>
+    }
+
+    class ContainerDTO << DTO >> {
+        + name : String
+        + length : double
+        + width : double
+        + height : double
+        + placements : List<PlacementDTO>
+    }
+
+    class PlacementDTO << DTO >> {
+        + boxName : String
+        + x : double
+        + y : double
+        + z : double
+        + dx : double
+        + dy : double
+        + dz : double
+        + placementId : Long
+        + boxId : Long
+    }
+
+    ShipmentVisualizationDTO *-- ContainerDTO
+    ContainerDTO *-- PlacementDTO
+}
+
+' ============================================================
+'  KlaudieAlg – Packing Algorithm
+' ============================================================
+
+package "KlaudieAlg" {
+
+    class RealisticPacker {
+        + setContainer(c : PackingContainer)
+        + addItem(item : PackingItem)
+        + pack() : PackingResult
+    }
+
+    class LayeredPackingAlgorithm {
+        + pack(container, items, params) : PackingResult
+    }
+
+    class PackingContainer {
+        + length : double
+        + width : double
+        + height : double
+        + maxWeight : double
+        + volume : double
+    }
+
+    class PackingItem {
+        + id : String
+        + length : double
+        + width : double
+        + height : double
+        + weight : double
+        + volume : double
+        + typeId : Long
+        + getRotations() : List<PackingItem>
+    }
+
+    class PlacedItem {
+        + item : PackingItem
+        + position : Position
+        + layerIndex : int
+        + intersects(other : PlacedItem) : boolean
+    }
+
+    class Position {
+        + x : double
+        + y : double
+        + z : double
+    }
+
+    class PackingResult {
+        + placedItems : List<PlacedItem>
+        + unpackedItems : List<PackingItem>
+        + container : PackingContainer
+        + statistics : PackingStatistics
+        + success : boolean
+    }
+
+    class PackingParameters {
+        + clusteringWeight : double
+        + gapPenalty : double
+        + stabilityWeight : double
+        + minSupportRatio : double
+        + allowRotations : boolean
+    }
+
+    class PackingStatistics {
+        + totalItems : int
+        + packedItems : int
+        + volumeUtilization : double
+        + weightUtilization : double
+        + realismScore : double
+    }
+
+    class RealismScorer {
+        + calculateRealismScore() : double
+    }
+
+    RealisticPacker --> LayeredPackingAlgorithm
+    RealisticPacker --> PackingContainer
+    RealisticPacker --> PackingItem
+    LayeredPackingAlgorithm --> PackingResult
+    LayeredPackingAlgorithm --> PackingParameters
+    PackingResult --> PackingStatistics
+    PackingResult --> PlacedItem
+    PlacedItem --> Position
+    PlacedItem --> PackingItem
+    RealismScorer --> PlacedItem
+}
+
+' ============================================================
+'  SERVICES
+' ============================================================
+
+package "services" {
+
+    class UserService {
+        + createUser(user : User) : User
+        + getAllUsers() : List<User>
+        + getUserById(id : Long) : User
+        + updateUser(id, dto : UserUpdateDTO) : User
+        + updateUserPassword(id, dto : PasswordDTO) : User
+        + setVerified(id, verified) : User
+        + deleteUser(id : Long) : void
+        + getUserByEmail(email : String) : UserDTO
+    }
+
+    class BoxService {
+        + createBox(box : Box) : Box
+        + importBoxesFromExcel(file : MultipartFile) : void
+        + getAllBoxes() : List<Box>
+        + getVisibleBoxes(user : User) : List<Box>
+        + getBoxByIdWithPermission(id, user) : Box
+        + updateBoxWithPermission(id, box, user) : Box
+        + deleteBoxWithPermission(id, user) : void
+        + shareBox(id, targetUserId, canView, canEdit) : UserBox
+    }
+
+    class ContainerService {
+        + createContainer(c : Container) : Container
+        + getVisibleContainers(user : User) : List<Container>
+        + getAllContainers() : List<Container>
+        + getContainerByIdWithPermission(id, user) : Container
+        + updateContainerWithPermission(id, c, user) : Container
+        + deleteContainerWithPermission(id, user) : void
+        + shareContainer(id, targetUserId, canView, canEdit) : UserContainer
+    }
+
+    class ShipmentService {
+        + saveShipment(shipment : Shipment) : Shipment
+        + getVisibleShipments(user : User) : List<Shipment>
+        + getAllShipments() : List<Shipment>
+        + getShipmentByIdWithPermission(id, user) : Shipment
+        + deleteShipmentWithPermission(id, user) : void
+        + shareShipment(id, targetUserId, canView, canEdit) : UserShipment
+    }
+
+    class BoxPackingService << Skjolber >> {
+        + packShipment(request, user) : Shipment
+    }
+
+    class BoxPackingServiceToo << XFLP >> {
+        + packShipment(request, user) : Shipment
+    }
+
+    class RealisticPackingService << KlaudieAlg >> {
+        + packShipment(request, user) : Shipment
+        + packShipment(request, user, params) : Shipment
+    }
+}
+
+' ============================================================
+'  CONTROLLERS
+' ============================================================
+
+package "controllers" {
+
+    class AuthController << @RestController >> {
+        + register(user : User) : String
+        + login(user : User) : String
+    }
+
+    class UserController << @RestController >> {
+        + createUser(user : User) : User
+        + getAllUsers() : List<User>
+        + getUserByEmail(email : String) : UserDTO
+        + getUserById(id : Long) : User
+        + getCurrentUser() : User
+        + updateUser(id, dto) : User
+        + updatePassword(id, dto) : User
+        + setVerified(id, verified) : User
+        + deleteUser(id : Long) : void
+    }
+
+    class BoxController << @RestController >> {
+        + createBox(box : Box) : Box
+        + uploadExcel(file) : String
+        + getBoxes() : List<Box>
+        + getAllBoxes() : List<Box>
+        + getBox(id : Long) : Box
+        + updateBox(id, box) : Box
+        + deleteBox(id : Long) : void
+        + shareBox(id, targetUserId, canView, canEdit) : UserBox
+    }
+
+    class ContainerController << @RestController >> {
+        + createContainer(c : Container) : Container
+        + getContainers() : List<Container>
+        + getAllContainers() : List<Container>
+        + getContainer(id : Long) : Container
+        + updateContainer(id, c) : Container
+        + deleteContainer(id : Long) : void
+        + shareContainer(id, targetUserId, canView, canEdit) : UserContainer
+    }
+
+    class ShipmentController << @RestController >> {
+        + packSkjolber(request : ShipmentRequest) : Shipment
+        + packXflp(request : ShipmentRequest) : Shipment
+        + packRealistic(request : ShipmentRequest) : Shipment
+        + getShipments() : List<Shipment>
+        + getAllShipments() : List<Shipment>
+        + getShipment(id : Long) : Shipment
+        + deleteShipment(id : Long) : void
+        + shareShipment(id, targetUserId, canView, canEdit) : UserShipment
+        + getVisualization(id : Long) : ShipmentVisualizationDTO
+    }
+}
+
+' ── Controller → Service dependencies ──
+
+AuthController       --> UserService
+AuthController       ..> "security" : JwtService
+UserController       --> UserService
+BoxController        --> BoxService
+ContainerController  --> ContainerService
+ShipmentController   --> ShipmentService
+ShipmentController   --> BoxPackingService
+ShipmentController   --> BoxPackingServiceToo
+ShipmentController   --> RealisticPackingService
+
+' ============================================================
+'  SECURITY
+' ============================================================
+
+package "security" {
+
+    class SecurityConfig {
+        + filterChain(http) : SecurityFilterChain
+    }
+
+    class JwtAuthenticationFilter << OncePerRequestFilter >> {
+        + doFilterInternal(request, response, chain) : void
+    }
+
+    class JwtService {
+        + generateToken(user : User) : String
+        + extractUsername(token : String) : String
+        + isTokenValid(token, userDetails) : boolean
+    }
+
+    class ApplicationConfig {
+        + userDetailsService() : UserDetailsService
+        + passwordEncoder() : PasswordEncoder
+        + authenticationManager() : AuthenticationManager
+    }
+
+    SecurityConfig --> JwtAuthenticationFilter
+    JwtAuthenticationFilter --> JwtService
+    ApplicationConfig --> UserService
+}
+
+@enduml

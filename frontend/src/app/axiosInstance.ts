@@ -1,8 +1,7 @@
 import axios from "axios";
 
-// Vytvoříme instanci Axios s default URL a interceptorem
 const axiosInstance = axios.create({
-    baseURL: "http://localhost:8080", // PŘIDÁNO: aby requesty šly přímo na backend
+    baseURL: process.env.REACT_APP_API_URL || "http://localhost:8080",
     headers: {
         "Content-Type": "application/json",
     },
