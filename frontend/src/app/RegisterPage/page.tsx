@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import axiosInstance from "../axiosInstance";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function RegisterPage() {
@@ -20,7 +20,7 @@ export default function RegisterPage() {
         if (password.length < 6) { setError("Heslo musí mít alespoň 6 znaků"); return; }
         setLoading(true);
         try {
-            await axios.post("/auth/register", { email, name, surname, password, role: "ROLE_USER" });
+            await axiosInstance.post("/auth/register", { email, name, surname, password, role: "ROLE_USER" });
             navigate("/login");
         } catch (err: any) {
             setError("Chyba při registraci: " + (err.response?.data || err.message));

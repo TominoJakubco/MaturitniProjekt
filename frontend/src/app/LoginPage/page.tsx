@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import axiosInstance from "../axiosInstance";
 import { Link } from "react-router-dom";
 
 export default function LoginPage() {
@@ -13,7 +13,7 @@ export default function LoginPage() {
         setError("");
         setLoading(true);
         try {
-            const res = await axios.post("/auth/login", { email, password });
+            const res = await axiosInstance.post("/auth/login", { email, password });
             localStorage.setItem("token", res.data);
             window.location.href = "/";
         } catch {
