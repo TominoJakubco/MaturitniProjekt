@@ -1,4 +1,4 @@
-package org.projekt.KlaudieAlg;
+package org.projekt.TominoAlg;
 
 /**
  * Umístění krabice v kontejneru

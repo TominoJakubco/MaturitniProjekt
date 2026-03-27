@@ -1,4 +1,4 @@
-package org.projekt.KlaudieAlg;
+package org.projekt.TominoAlg;
 
 /**
  * Parametry pro algoritmus balení

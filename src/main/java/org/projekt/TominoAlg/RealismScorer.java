@@ -1,4 +1,4 @@
-package org.projekt.KlaudieAlg;
+package org.projekt.TominoAlg;
 
 import java.util.*;
 import java.util.stream.Collectors;

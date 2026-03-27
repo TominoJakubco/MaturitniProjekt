@@ -197,10 +197,10 @@ package "dto" {
 }
 
 ' ============================================================
-'  KlaudieAlg – Packing Algorithm
+'  TominoAlg – Packing Algorithm
 ' ============================================================
 
-package "KlaudieAlg" {
+package "TominoAlg" {
 
     class RealisticPacker {
         + setContainer(c : PackingContainer)
@@ -339,7 +339,7 @@ package "services" {
         + packShipment(request, user) : Shipment
     }
 
-    class RealisticPackingService << KlaudieAlg >> {
+    class RealisticPackingService << TominoAlg >> {
         + packShipment(request, user) : Shipment
         + packShipment(request, user, params) : Shipment
     }

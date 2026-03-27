@@ -1,4 +1,4 @@
-package org.projekt.KlaudieAlg;
+package org.projekt.TominoAlg;
 
 /**
  * Kontejner pro balení

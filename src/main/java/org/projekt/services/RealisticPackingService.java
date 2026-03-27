@@ -3,7 +3,7 @@ package org.projekt.services;
 import org.projekt.models.ContainerInstance;
 import org.projekt.models.Placement;
 import org.projekt.models.Shipment;
-import org.projekt.KlaudieAlg.*;
+import org.projekt.TominoAlg.*;
 import org.projekt.repositories.BoxRepository;
 import org.projekt.repositories.ContainerRepository;
 import org.projekt.repositories.ShipmentRepository;

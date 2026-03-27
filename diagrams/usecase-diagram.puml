@@ -70,7 +70,7 @@ rectangle "3D Packing System" {
     package "Packing Algorithms" {
         usecase "Pack with Skjolber" as UC_Skjolber
         usecase "Pack with XFLP" as UC_XFLP
-        usecase "Pack with KlaudieAlg\n(Realistic)" as UC_Realistic
+        usecase "Pack with TominoAlg\n(Realistic)" as UC_Realistic
     }
 
     ' ── User Management (Admin) ──
